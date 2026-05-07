@@ -3,49 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>PlanOS - Personal Dashboard</title>
+
   <link rel="stylesheet" href="./assets/css/style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 </head>
+
 <body>
+  <!-- LOGIN SCREEN -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">✦</div>
+
+      <p class="eyebrow">PRIVATE ACCESS</p>
+
+      <h1>Welcome to PlanOS</h1>
+
+      <p class="login-desc">
+        Hệ thống quản lý kế hoạch cá nhân: học tập, tiết kiệm, laptop, MoMo và nhiều hơn nữa.
+      </p>
+
+      <form id="loginForm">
+        <label>
+          Tài khoản
+          <input
+            type="text"
+            id="loginUsername"
+            placeholder="Nhập tài khoản..."
+            required
+          />
+        </label>
+
+        <label>
+          Mật khẩu
+          <input
+            type="password"
+            id="loginPassword"
+            placeholder="Nhập mật khẩu..."
+            required
+          />
+        </label>
+
+        <button type="submit" class="login-btn">
+          Đăng nhập
+        </button>
+
+        <p class="login-error" id="loginError">
+          Sai tài khoản hoặc mật khẩu 😭
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP -->
   <div class="app">
+    <!-- SIDEBAR -->
     <aside class="sidebar">
-      <div class="brand">
-        <div class="logo">✦</div>
-        <div>
-          <h1>PlanOS</h1>
-          <p>Personal ERP</p>
+      <div>
+        <div class="logo-box">
+          <div class="logo-icon">✦</div>
+
+          <div>
+            <h2>PlanOS</h2>
+            <p>Personal ERP</p>
+          </div>
         </div>
+
+        <nav class="menu nav">
+          <button class="menu-item nav-item active" data-page="dashboard">
+            🏠 Tổng quan
+          </button>
+
+          <button class="menu-item nav-item" data-page="kh1">
+            📚 KH1 Học tập
+          </button>
+
+          <button class="menu-item nav-item" data-page="kh2">
+            💰 KH2 Tiết kiệm
+          </button>
+
+          <button class="menu-item nav-item" data-page="kh3">
+            🧩 KH3 Dự phòng
+          </button>
+
+          <button class="menu-item nav-item" data-page="kh4">
+            📖 KH4 Sách
+          </button>
+
+          <button class="menu-item nav-item" data-page="kh5">
+            💻 KH5 Laptop
+          </button>
+
+          <button class="menu-item nav-item" data-page="kh6">
+            💳 KH6 MoMo
+          </button>
+        </nav>
       </div>
 
-      <nav class="nav">
-        <button class="nav-item active" data-page="dashboard">🏠 Tổng quan</button>
-        <button class="nav-item" data-page="kh1">📚 KH1 Học tập</button>
-        <button class="nav-item" data-page="kh2">💰 KH2 Tiết kiệm</button>
-        <button class="nav-item" data-page="kh3">🧩 KH3 Dự phòng</button>
-        <button class="nav-item" data-page="kh4">📖 KH4 Sách</button>
-        <button class="nav-item" data-page="kh5">💻 KH5 Laptop</button>
-        <button class="nav-item" data-page="kh6">💳 KH6 MoMo</button>
-      </nav>
-
-      <div class="sidebar-card">
-        <p>Trạng thái hôm nay</p>
-        <h3>Đang xây hệ thống 🔥</h3>
+      <div class="sidebar-bottom">
+        <div class="status-box sidebar-card">
+          <p>Trạng thái hôm nay</p>
+          <h3>Đang xây hệ thống 🔥</h3>
+        </div>
       </div>
     </aside>
 
-    <main class="main">
+    <!-- MAIN -->
+    <main class="main-content main">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Welcome back</p>
-          <h2 id="pageTitle">Tổng quan kế hoạch</h2>
+          <p class="eyebrow">WELCOME BACK</p>
+          <h1 id="pageTitle">Tổng quan kế hoạch</h1>
         </div>
 
-        <div class="actions">
-          <button id="themeBtn">🌙</button>
-          <button class="primary-btn" id="addPlanBtn">+ Thêm</button>
-          <button id="cloudSaveBtn">☁️ Save</button>
-          <button id="cloudLoadBtn">🔄 Load</button>
+        <div class="top-actions actions">
+          <button class="action-btn" id="themeBtn" title="Đổi giao diện">
+            🌙
+          </button>
+
+          <button class="action-btn primary-btn" id="addPlanBtn">
+            + Thêm
+          </button>
+
+          <button class="action-btn" id="cloudSaveBtn">
+            ☁ Save
+          </button>
+
+          <button class="action-btn" id="cloudLoadBtn">
+            🔄 Load
+          </button>
+
+          <button class="action-btn logout-btn" id="logoutBtn">
+            Logout
+          </button>
         </div>
       </header>
 
@@ -53,6 +144,7 @@
     </main>
   </div>
 
+  <!-- ADD / EDIT MODAL -->
   <div class="modal" id="planModal">
     <div class="modal-box">
       <div class="modal-header">
@@ -60,7 +152,10 @@
           <p class="eyebrow" id="modalMode">New item</p>
           <h3 id="modalTitle">Thêm kế hoạch</h3>
         </div>
-        <button id="closeModalBtn" class="icon-btn">✕</button>
+
+        <button type="button" id="closeModalBtn" class="icon-btn">
+          ✕
+        </button>
       </div>
 
       <form id="planForm">
@@ -80,7 +175,12 @@
 
         <label>
           Tiêu đề
-          <input id="planName" type="text" placeholder="VD: Hoàn thành bài thực hành..." required />
+          <input
+            id="planName"
+            type="text"
+            placeholder="VD: Hoàn thành bài thực hành..."
+            required
+          />
         </label>
 
         <label>
@@ -100,18 +200,29 @@
 
         <label>
           Ghi chú
-          <textarea id="planNote" placeholder="VD: Deadline, số tiền, trạng thái..."></textarea>
+          <textarea
+            id="planNote"
+            placeholder="VD: Deadline, số tiền, trạng thái..."
+          ></textarea>
         </label>
 
         <div class="modal-actions">
-          <button type="button" class="ghost-btn" id="cancelModalBtn">Hủy</button>
-          <button type="submit" class="primary-btn">Lưu</button>
+          <button type="button" class="ghost-btn" id="cancelModalBtn">
+            Hủy
+          </button>
+
+          <button type="submit" class="primary-btn">
+            Lưu
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-  <div id="toast" class="toast">Đã lưu ✅</div>
+  <!-- TOAST -->
+  <div id="toast" class="toast">
+    Đã lưu ✅
+  </div>
 
   <script type="module" src="./assets/js/app.js"></script>
 </body>

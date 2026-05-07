@@ -3,6 +3,17 @@ import {
   loadDataFromCloud
 } from "./firebase.js";
 
+/* =========================
+   LOGIN CONFIG
+========================= */
+
+const LOGIN_USERNAME = "danhcr6sdd";
+const LOGIN_PASSWORD = "thanhdanh7777";
+
+/* =========================
+   APP CONFIG
+========================= */
+
 const DAILY_SAVING = 15000;
 
 let currentPage = "dashboard";
@@ -18,14 +29,44 @@ let appData = JSON.parse(localStorage.getItem("planosData")) || {
 };
 
 const pageInfo = {
-  dashboard: { title: "Tổng quan kế hoạch" },
-  kh1: { title: "KH1 - Học tập", icon: "📚", desc: "Môn học, deadline, đồ án, bài tập." },
-  kh2: { title: "KH2 - Tiết kiệm 15K/ngày", icon: "💰", desc: "Theo dõi PASS, rút quỹ, ghi chú từng ngày." },
-  kh3: { title: "KH3 - Dự phòng", icon: "🧩", desc: "Không gian mở cho mục tiêu mới." },
-  kh4: { title: "KH4 - Wishlist sách", icon: "📖", desc: "Sách muốn mua, đang đọc, đã đọc." },
-  kh5: { title: "KH5 - Góp laptop", icon: "💻", desc: "Theo dõi kỳ góp laptop." },
-  kh6: { title: "KH6 - Góp MoMo", icon: "💳", desc: "Theo dõi các kỳ góp MoMo." }
+  dashboard: {
+    title: "Tổng quan kế hoạch"
+  },
+  kh1: {
+    title: "KH1 - Học tập",
+    icon: "📚",
+    desc: "Môn học, deadline, đồ án, bài tập."
+  },
+  kh2: {
+    title: "KH2 - Tiết kiệm 15K/ngày",
+    icon: "💰",
+    desc: "Theo dõi PASS, rút quỹ, ghi chú từng ngày."
+  },
+  kh3: {
+    title: "KH3 - Dự phòng",
+    icon: "🧩",
+    desc: "Không gian mở cho mục tiêu mới."
+  },
+  kh4: {
+    title: "KH4 - Wishlist sách",
+    icon: "📖",
+    desc: "Sách muốn mua, đang đọc, đã đọc."
+  },
+  kh5: {
+    title: "KH5 - Góp laptop",
+    icon: "💻",
+    desc: "Theo dõi kỳ góp laptop."
+  },
+  kh6: {
+    title: "KH6 - Góp MoMo",
+    icon: "💳",
+    desc: "Theo dõi các kỳ góp MoMo."
+  }
 };
+
+/* =========================
+   DOM
+========================= */
 
 const content = document.getElementById("content");
 const pageTitle = document.getElementById("pageTitle");
@@ -49,16 +90,95 @@ const planName = document.getElementById("planName");
 const planDate = document.getElementById("planDate");
 const planStatus = document.getElementById("planStatus");
 const planNote = document.getElementById("planNote");
+
 const toast = document.getElementById("toast");
+
+const loginScreen = document.getElementById("loginScreen");
+const loginForm = document.getElementById("loginForm");
+const loginUsername = document.getElementById("loginUsername");
+const loginPassword = document.getElementById("loginPassword");
+const loginError = document.getElementById("loginError");
+const logoutBtn = document.getElementById("logoutBtn");
+
+/* =========================
+   LOGIN
+========================= */
+
+function checkLogin() {
+  const isLoggedIn = sessionStorage.getItem("planosLoggedIn") === "true";
+
+  if (isLoggedIn && loginScreen) {
+    loginScreen.classList.add("hide");
+  }
+}
+
+if (loginForm) {
+  loginForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const username = loginUsername.value.trim();
+    const password = loginPassword.value.trim();
+
+    if (username === LOGIN_USERNAME && password === LOGIN_PASSWORD) {
+      sessionStorage.setItem("planosLoggedIn", "true");
+      loginScreen.classList.add("hide");
+      loginError.classList.remove("show");
+      showToast("Đăng nhập thành công 🔐");
+    } else {
+      loginError.classList.add("show");
+      loginPassword.value = "";
+      loginPassword.focus();
+    }
+  });
+}
+
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", () => {
+    sessionStorage.removeItem("planosLoggedIn");
+    location.reload();
+  });
+}
+
+/* =========================
+   HELPERS
+========================= */
 
 function saveLocal() {
   localStorage.setItem("planosData", JSON.stringify(appData));
 }
 
+async function saveAll(showMessage = false) {
+  saveLocal();
+
+  try {
+    await saveDataToCloud({
+      ...appData,
+      savedAt: new Date().toISOString()
+    });
+
+    console.log("Auto saved to Firebase");
+
+    if (showMessage) {
+      showToast("Đã lưu cloud ☁️");
+    }
+  } catch (error) {
+    console.error("Auto save Firebase error:", error);
+
+    if (showMessage) {
+      showToast("Lỗi lưu cloud 😭");
+    }
+  }
+}
+
 function showToast(message) {
+  if (!toast) return;
+
   toast.textContent = message;
   toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), 1800);
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 1800);
 }
 
 function uid() {
@@ -82,11 +202,24 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function badgeClass(status) {
+  if (status === "Xong") return "green";
+  if (status === "Quan trọng") return "red";
+  return "yellow";
+}
+
+/* =========================
+   KH2 STATS
+========================= */
+
 function getKh2Stats() {
   const records = Object.values(appData.kh2Daily || {});
-  const passDays = records.filter(day => day.saved).length;
+  const passDays = records.filter((day) => day.saved).length;
   const totalSaved = passDays * DAILY_SAVING;
-  const totalWithdraw = records.reduce((sum, day) => sum + Number(day.withdraw || 0), 0);
+  const totalWithdraw = records.reduce(
+    (sum, day) => sum + Number(day.withdraw || 0),
+    0
+  );
 
   return {
     passDays,
@@ -97,15 +230,17 @@ function getKh2Stats() {
 }
 
 function getAllItems() {
-  return ["kh1", "kh2", "kh3", "kh4", "kh5", "kh6"]
-    .flatMap(key => appData[key].map(item => ({ ...item, group: key })));
+  return ["kh1", "kh2", "kh3", "kh4", "kh5", "kh6"].flatMap((key) =>
+    appData[key].map((item) => ({
+      ...item,
+      group: key
+    }))
+  );
 }
 
-function badgeClass(status) {
-  if (status === "Xong") return "green";
-  if (status === "Quan trọng") return "red";
-  return "yellow";
-}
+/* =========================
+   RENDER
+========================= */
 
 function renderDashboard() {
   const stats = getKh2Stats();
@@ -115,7 +250,10 @@ function renderDashboard() {
     <div class="grid">
       <div class="card hero">
         <h2>Personal Plan Dashboard ✨</h2>
-        <p>Trung tâm quản lý KH1 đến KH6. Mỗi kế hoạch đều có thêm, sửa, xóa và đồng bộ Firebase Cloud.</p>
+        <p>
+          Trung tâm quản lý KH1 đến KH6. Mỗi kế hoạch đều có thêm, sửa, xóa
+          và tự động lưu Firebase Cloud.
+        </p>
       </div>
 
       <div class="grid grid-4">
@@ -127,7 +265,9 @@ function renderDashboard() {
 
         <div class="card">
           <h3>💰 KH2 Tiết kiệm</h3>
-          <p class="big">${formatMoney(stats.balance)}</p>
+          <p class="big ${stats.balance < 0 ? "danger-text" : "success-text"}">
+            ${formatMoney(stats.balance)}
+          </p>
           <p class="muted">Số dư lý thuyết</p>
         </div>
 
@@ -150,12 +290,16 @@ function renderDashboard() {
             <h3>Tất cả kế hoạch gần đây</h3>
             <p class="muted">Dữ liệu từ KH1 đến KH6.</p>
           </div>
+
+          <button class="primary-btn" onclick="openAddModal('kh1')">
+            + Thêm kế hoạch
+          </button>
         </div>
 
         <div class="list">
           ${
             allItems.length
-              ? allItems.slice(-8).reverse().map(renderItem).join("")
+              ? allItems.slice(-10).reverse().map(renderItem).join("")
               : `<p class="muted">Chưa có dữ liệu. Bấm + Thêm để bắt đầu.</p>`
           }
         </div>
@@ -165,12 +309,12 @@ function renderDashboard() {
 }
 
 function renderKhPage(key) {
-  const info = pageInfo[key];
-
   if (key === "kh2") {
     renderKh2();
     return;
   }
+
+  const info = pageInfo[key];
 
   content.innerHTML = `
     <div class="grid">
@@ -185,7 +329,10 @@ function renderKhPage(key) {
             <h3>Danh sách ${info.title}</h3>
             <p class="muted">Có đủ 3 chức năng: thêm, sửa, xóa.</p>
           </div>
-          <button class="primary-btn" onclick="openAddModal('${key}')">+ Thêm vào ${key.toUpperCase()}</button>
+
+          <button class="primary-btn" onclick="openAddModal('${key}')">
+            + Thêm vào ${key.toUpperCase()}
+          </button>
         </div>
 
         <div class="list">
@@ -226,7 +373,9 @@ function renderKh2() {
 
         <div class="card">
           <h3>Số dư quỹ</h3>
-          <p class="big ${stats.balance < 0 ? "danger-text" : "success-text"}">${formatMoney(stats.balance)}</p>
+          <p class="big ${stats.balance < 0 ? "danger-text" : "success-text"}">
+            ${formatMoney(stats.balance)}
+          </p>
           <p class="muted">Đã thêm - đã rút</p>
         </div>
       </div>
@@ -266,6 +415,7 @@ function renderKh2() {
 
         <div class="card">
           <h3>Tình trạng ngày đang chọn</h3>
+
           <div class="kh2-status">
             <div class="status-line">
               <span>Ngày</span>
@@ -296,7 +446,10 @@ function renderKh2() {
             <h3>Ghi chú / kế hoạch riêng của KH2</h3>
             <p class="muted">Phần này cũng có thêm, sửa, xóa như các KH khác.</p>
           </div>
-          <button class="primary-btn" onclick="openAddModal('kh2')">+ Thêm KH2</button>
+
+          <button class="primary-btn" onclick="openAddModal('kh2')">
+            + Thêm KH2
+          </button>
         </div>
 
         <div class="list">
@@ -310,6 +463,7 @@ function renderKh2() {
 
       <div class="card">
         <h3>Lịch sử ngày đã ghi</h3>
+
         <div class="list">
           ${renderKh2History()}
         </div>
@@ -321,25 +475,38 @@ function renderKh2() {
 }
 
 function renderKh2History() {
-  const entries = Object.entries(appData.kh2Daily || {}).sort((a, b) => b[0].localeCompare(a[0]));
+  const entries = Object.entries(appData.kh2Daily || {}).sort((a, b) =>
+    b[0].localeCompare(a[0])
+  );
 
   if (!entries.length) {
     return `<p class="muted">Chưa có ngày nào được ghi.</p>`;
   }
 
-  return entries.map(([date, record]) => `
-    <div class="item">
-      <div>
-        <strong>${escapeHTML(date)}</strong>
-        <p class="muted">
-          Rút: ${formatMoney(record.withdraw || 0)}
-          ${record.note ? "• " + escapeHTML(record.note) : ""}
-        </p>
+  return entries
+    .map(
+      ([date, record]) => `
+      <div class="item">
+        <div>
+          <strong>${escapeHTML(date)}</strong>
+          <p class="muted">
+            Rút: ${formatMoney(record.withdraw || 0)}
+            ${record.note ? "• " + escapeHTML(record.note) : ""}
+          </p>
+        </div>
+
+        <span class="badge ${record.saved ? "green" : "red"}">
+          ${record.saved ? "PASS" : "Chưa PASS"}
+        </span>
       </div>
-      <span class="badge ${record.saved ? "green" : "red"}">${record.saved ? "PASS" : "Chưa PASS"}</span>
-    </div>
-  `).join("");
+    `
+    )
+    .join("");
 }
+
+/* =========================
+   KH2 FORM
+========================= */
 
 function initKh2Form() {
   const dateInput = document.getElementById("kh2DateInput");
@@ -351,6 +518,7 @@ function initKh2Form() {
 
   function renderSelected() {
     const date = dateInput.value;
+
     const record = appData.kh2Daily[date] || {
       saved: false,
       withdraw: 0,
@@ -362,10 +530,17 @@ function initKh2Form() {
     noteInput.value = record.note || "";
 
     document.getElementById("kh2SelectedDate").textContent = date || "--";
-    document.getElementById("kh2SelectedSaved").textContent = record.saved ? "Đã thêm 15K ✅" : "Chưa thêm ❌";
-    document.getElementById("kh2SelectedSaved").className = record.saved ? "success-text" : "danger-text";
-    document.getElementById("kh2SelectedWithdraw").textContent = formatMoney(record.withdraw || 0);
-    document.getElementById("kh2SelectedNote").textContent = record.note || "Không có";
+
+    const selectedSaved = document.getElementById("kh2SelectedSaved");
+    selectedSaved.textContent = record.saved ? "Đã thêm 15K ✅" : "Chưa thêm ❌";
+    selectedSaved.className = record.saved ? "success-text" : "danger-text";
+
+    document.getElementById("kh2SelectedWithdraw").textContent = formatMoney(
+      record.withdraw || 0
+    );
+
+    document.getElementById("kh2SelectedNote").textContent =
+      record.note || "Không có";
   }
 
   dateInput.value = today();
@@ -373,7 +548,7 @@ function initKh2Form() {
 
   dateInput.addEventListener("change", renderSelected);
 
-  saveBtn.addEventListener("click", () => {
+  saveBtn.addEventListener("click", async () => {
     const date = dateInput.value;
 
     if (!date) {
@@ -388,12 +563,12 @@ function initKh2Form() {
       updatedAt: new Date().toISOString()
     };
 
-    saveLocal();
+    await saveAll();
     renderKh2();
-    showToast("Đã lưu ngày này ✅");
+    showToast("Đã lưu ngày này + cloud ✅");
   });
 
-  deleteBtn.addEventListener("click", () => {
+  deleteBtn.addEventListener("click", async () => {
     const date = dateInput.value;
 
     if (!appData.kh2Daily[date]) {
@@ -401,12 +576,21 @@ function initKh2Form() {
       return;
     }
 
+    const confirmDelete = confirm("Bạn chắc chắn muốn xóa dữ liệu ngày này?");
+
+    if (!confirmDelete) return;
+
     delete appData.kh2Daily[date];
-    saveLocal();
+
+    await saveAll();
     renderKh2();
-    showToast("Đã xóa ngày này 🗑");
+    showToast("Đã xóa ngày này + cloud 🗑");
   });
 }
+
+/* =========================
+   CRUD ITEMS
+========================= */
 
 function renderItem(item) {
   const group = item.group || currentPage;
@@ -423,55 +607,52 @@ function renderItem(item) {
       </div>
 
       <div class="item-actions">
-        <span class="badge ${badgeClass(item.status)}">${escapeHTML(item.status || "Đang làm")}</span>
-        <button class="mini-btn" onclick="openEditModal('${group}', '${item.id}')">Sửa</button>
-        <button class="mini-btn danger" onclick="deleteItem('${group}', '${item.id}')">Xóa</button>
+        <span class="badge ${badgeClass(item.status)}">
+          ${escapeHTML(item.status || "Đang làm")}
+        </span>
+
+        <button class="mini-btn" onclick="openEditModal('${group}', '${item.id}')">
+          Sửa
+        </button>
+
+        <button class="mini-btn danger" onclick="deleteItem('${group}', '${item.id}')">
+          Xóa
+        </button>
       </div>
     </div>
   `;
-}
-
-function loadPage(pageName) {
-  currentPage = pageName;
-  pageTitle.textContent = pageInfo[pageName].title;
-
-  navItems.forEach(item => {
-    item.classList.toggle("active", item.dataset.page === pageName);
-  });
-
-  if (pageName === "dashboard") {
-    renderDashboard();
-  } else {
-    renderKhPage(pageName);
-  }
 }
 
 function openAddModal(type = currentPage === "dashboard" ? "kh1" : currentPage) {
   editId.value = "";
   modalMode.textContent = "New item";
   modalTitle.textContent = "Thêm kế hoạch";
+
   planType.value = type;
   planName.value = "";
   planDate.value = "";
   planStatus.value = "Đang làm";
   planNote.value = "";
+
   planModal.classList.add("show");
   planName.focus();
 }
 
 function openEditModal(type, id) {
-  const item = appData[type].find(x => x.id === id);
+  const item = appData[type].find((x) => x.id === id);
 
   if (!item) return;
 
   editId.value = id;
   modalMode.textContent = "Edit item";
   modalTitle.textContent = "Sửa kế hoạch";
+
   planType.value = type;
   planName.value = item.name || "";
   planDate.value = item.date || "";
   planStatus.value = item.status || "Đang làm";
   planNote.value = item.note || "";
+
   planModal.classList.add("show");
   planName.focus();
 }
@@ -482,18 +663,27 @@ function closeModal() {
   editId.value = "";
 }
 
-function deleteItem(type, id) {
-  appData[type] = appData[type].filter(item => item.id !== id);
-  saveLocal();
+async function deleteItem(type, id) {
+  const confirmDelete = confirm("Bạn chắc chắn muốn xóa mục này?");
+
+  if (!confirmDelete) return;
+
+  appData[type] = appData[type].filter((item) => item.id !== id);
+
+  await saveAll();
   loadPage(currentPage);
-  showToast("Đã xóa 🗑");
+  showToast("Đã xóa + cloud 🗑");
 }
 
 window.openAddModal = openAddModal;
 window.openEditModal = openEditModal;
 window.deleteItem = deleteItem;
 
-planForm.addEventListener("submit", event => {
+/* =========================
+   FORM SUBMIT
+========================= */
+
+planForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const type = planType.value;
@@ -508,20 +698,58 @@ planForm.addEventListener("submit", event => {
     updatedAt: new Date().toISOString()
   };
 
+  if (!payload.name) {
+    showToast("Bạn chưa nhập tiêu đề 😭");
+    return;
+  }
+
   if (id) {
-    appData[type] = appData[type].map(item => item.id === id ? { ...item, ...payload } : item);
+    appData[type] = appData[type].map((item) =>
+      item.id === id ? { ...item, ...payload } : item
+    );
+
     showToast("Đã sửa kế hoạch ✅");
   } else {
     appData[type].push({
       ...payload,
       createdAt: new Date().toISOString()
     });
+
     showToast("Đã thêm kế hoạch ✅");
   }
 
-  saveLocal();
+  await saveAll();
   closeModal();
   loadPage(currentPage);
+});
+
+/* =========================
+   PAGE NAVIGATION
+========================= */
+
+function loadPage(pageName) {
+  currentPage = pageName;
+  pageTitle.textContent = pageInfo[pageName].title;
+
+  navItems.forEach((item) => {
+    item.classList.toggle("active", item.dataset.page === pageName);
+  });
+
+  if (pageName === "dashboard") {
+    renderDashboard();
+  } else {
+    renderKhPage(pageName);
+  }
+}
+
+/* =========================
+   EVENTS
+========================= */
+
+navItems.forEach((item) => {
+  item.addEventListener("click", () => {
+    loadPage(item.dataset.page);
+  });
 });
 
 themeBtn.addEventListener("click", () => {
@@ -529,28 +757,25 @@ themeBtn.addEventListener("click", () => {
   themeBtn.textContent = document.body.classList.contains("light") ? "☀️" : "🌙";
 });
 
-addPlanBtn.addEventListener("click", () => openAddModal());
+addPlanBtn.addEventListener("click", () => {
+  openAddModal();
+});
+
 closeModalBtn.addEventListener("click", closeModal);
 cancelModalBtn.addEventListener("click", closeModal);
 
-planModal.addEventListener("click", event => {
+planModal.addEventListener("click", (event) => {
   if (event.target === planModal) {
     closeModal();
   }
 });
 
-cloudSaveBtn.addEventListener("click", async () => {
-  try {
-    await saveDataToCloud({
-      ...appData,
-      savedAt: new Date().toISOString()
-    });
+/* =========================
+   CLOUD SYNC
+========================= */
 
-    showToast("Đã lưu cloud ☁️");
-  } catch (error) {
-    console.error("Lỗi Firebase:", error);
-    showToast("Lỗi lưu cloud 😭");
-  }
+cloudSaveBtn.addEventListener("click", async () => {
+  await saveAll(true);
 });
 
 cloudLoadBtn.addEventListener("click", async () => {
@@ -581,9 +806,10 @@ cloudLoadBtn.addEventListener("click", async () => {
   }
 });
 
-navItems.forEach(item => {
-  item.addEventListener("click", () => loadPage(item.dataset.page));
-});
+/* =========================
+   INIT
+========================= */
 
+checkLogin();
 saveLocal();
 loadPage("dashboard");
