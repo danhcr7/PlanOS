@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlanOS - Personal Dashboard</title>
+  <link rel="stylesheet" href="./assets/css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">✦</div>
+        <div>
+          <h1>PlanOS</h1>
+          <p>Personal ERP</p>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-page="dashboard">🏠 Tổng quan</button>
+        <button class="nav-item" data-page="kh1">📚 KH1 Học tập</button>
+        <button class="nav-item" data-page="kh2">💰 KH2 Tiết kiệm</button>
+        <button class="nav-item" data-page="kh3">🧩 KH3 Dự phòng</button>
+        <button class="nav-item" data-page="kh4">📖 KH4 Sách</button>
+        <button class="nav-item" data-page="kh5">💻 KH5 Laptop</button>
+        <button class="nav-item" data-page="kh6">💳 KH6 MoMo</button>
+      </nav>
+
+      <div class="sidebar-card">
+        <p>Trạng thái hôm nay</p>
+        <h3>Đang xây hệ thống 🔥</h3>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Welcome back</p>
+          <h2 id="pageTitle">Tổng quan kế hoạch</h2>
+        </div>
+
+        <div class="actions">
+          <button id="themeBtn">🌙</button>
+          <button class="primary-btn" id="addPlanBtn">+ Thêm</button>
+          <button id="cloudSaveBtn">☁️ Save</button>
+          <button id="cloudLoadBtn">🔄 Load</button>
+        </div>
+      </header>
+
+      <section id="content" class="content"></section>
+    </main>
+  </div>
+
+  <div class="modal" id="planModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow" id="modalMode">New item</p>
+          <h3 id="modalTitle">Thêm kế hoạch</h3>
+        </div>
+        <button id="closeModalBtn" class="icon-btn">✕</button>
+      </div>
+
+      <form id="planForm">
+        <input type="hidden" id="editId" />
+
+        <label>
+          Nhóm KH
+          <select id="planType" required>
+            <option value="kh1">KH1 - Học tập</option>
+            <option value="kh2">KH2 - Tiết kiệm</option>
+            <option value="kh3">KH3 - Dự phòng</option>
+            <option value="kh4">KH4 - Sách</option>
+            <option value="kh5">KH5 - Laptop</option>
+            <option value="kh6">KH6 - MoMo</option>
+          </select>
+        </label>
+
+        <label>
+          Tiêu đề
+          <input id="planName" type="text" placeholder="VD: Hoàn thành bài thực hành..." required />
+        </label>
+
+        <label>
+          Ngày / deadline
+          <input id="planDate" type="date" />
+        </label>
+
+        <label>
+          Trạng thái
+          <select id="planStatus">
+            <option value="Đang làm">Đang làm</option>
+            <option value="Sắp tới">Sắp tới</option>
+            <option value="Quan trọng">Quan trọng</option>
+            <option value="Xong">Xong</option>
+          </select>
+        </label>
+
+        <label>
+          Ghi chú
+          <textarea id="planNote" placeholder="VD: Deadline, số tiền, trạng thái..."></textarea>
+        </label>
+
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn" id="cancelModalBtn">Hủy</button>
+          <button type="submit" class="primary-btn">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Đã lưu ✅</div>
+
+  <script type="module" src="./assets/js/app.js"></script>
+</body>
+</html>
