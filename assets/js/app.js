@@ -13,6 +13,10 @@ let currentLang = localStorage.getItem(LANG_KEY) || "vi";
 let searchQuery = "";
 let saveTimer = null;
 let isCloudSaving = false;
+let pendingCloudSave = false;
+let lastSaveAt = 0;
+const SAVE_DELAY = 450;
+
 
 const defaultData = {
   kh1: [],
@@ -399,28 +403,55 @@ function showToast(message) {
 }
 
 async function saveCloud(showMessage = false) {
-  if (isCloudSaving) return;
+  if (isCloudSaving) {
+    pendingCloudSave = true;
+    return;
+  }
+
   isCloudSaving = true;
+  pendingCloudSave = false;
 
   try {
-    await saveDataToCloud({
+    const payload = {
       ...appData,
       savedAt: new Date().toISOString(),
-    });
+      version: Date.now()
+    };
+
+    await saveDataToCloud(payload);
+
+    lastSaveAt = Date.now();
 
     if (showMessage) showToast(t("cloudSaved"));
   } catch (error) {
-    console.error(error);
+    console.error("Firebase save error:", error);
+
+    pendingCloudSave = true;
+
     if (showMessage) showToast(t("cloudError"));
   } finally {
     isCloudSaving = false;
+
+    if (pendingCloudSave) {
+      pendingCloudSave = false;
+      setTimeout(() => saveCloud(false), 250);
+    }
   }
 }
 
 function saveAll(showMessage = false) {
   saveLocal();
+
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => saveCloud(showMessage), showMessage ? 0 : 700);
+
+  if (showMessage) {
+    saveCloud(true);
+    return;
+  }
+
+  saveTimer = setTimeout(() => {
+    saveCloud(false);
+  }, SAVE_DELAY);
 }
 
 async function loadCloud(showMessage = false) {
@@ -1386,5 +1417,12 @@ async function initApp() {
 
   setTimeout(notifyDueItems, 1200);
 }
+window.addEventListener("beforeunload", () => {
+  saveLocal();
+
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+  }
+});
 
 initApp();
