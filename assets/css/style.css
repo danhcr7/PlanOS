@@ -1869,3 +1869,9 @@ body {
     transform: translate(-120px,-60px);
   }
 }
+
+
+
+.hide {
+  display: none !important;
+}

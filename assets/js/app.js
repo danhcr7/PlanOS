@@ -608,8 +608,19 @@ function getAssistantAdvice() {
 }
 
 function checkLogin() {
+
   const ok = sessionStorage.getItem(LOGIN_KEY) === "true";
-  if (ok && loginScreen) loginScreen.classList.add("hide");
+
+  if (ok && loginScreen) {
+
+    // Ẩn login
+    loginScreen.classList.add("hide");
+
+    // Hiện app
+    $("app").classList.remove("hide");
+
+  }
+
 }
 
 loginForm?.addEventListener("submit", (e) => {
