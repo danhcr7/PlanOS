@@ -1,4 +1,7 @@
-import { saveDataToCloud, loadDataFromCloud } from "./firebase.js";
+import {
+  saveDataToCloud,
+  loadDataFromCloud
+} from "./supabase.js";
 
 /* =========================================================
    PlanOS — app.js 2026 Optimized
@@ -438,7 +441,7 @@ const runtime = {
 };
 
 const store = {
-  data: loadLocal(),
+  data: normalizeData(),
   version: 0,
 };
 
@@ -660,7 +663,7 @@ function invalidateAnalytics() {
 }
 
 function commit(mutator, options = {}) {
-  const { activity, render = true, cloud = true, toast = "" } = options;
+  const { activity, render = true, cloud = false, toast = "" } = options;
   mutator(store.data);
 
   if (activity) addActivity(activity.action, activity.detail, false);
@@ -766,7 +769,25 @@ async function loadCloud(showMessage = false) {
     if (showMessage) setButtonBusy(dom.cloudLoadBtn, false);
   }
 }
+async function bootFromCloud() {
+  try {
+    const data = await loadDataFromCloud();
 
+    if (data) {
+      store.data = normalizeData(data);
+      saveLocal();
+    } else {
+      store.data = normalizeData();
+    }
+  } catch (error) {
+    console.error("Supabase boot error:", error);
+    store.data = loadLocal();
+    showToast("Không tải được Supabase, đang dùng cache local");
+  }
+
+  invalidateAnalytics();
+  loadPage(runtime.currentPage || "dashboard");
+}
 /* =========================================================
    DERIVED DATA / ANALYTICS CACHE
 ========================================================= */
@@ -1233,25 +1254,32 @@ function checkLogin() {
   return ok;
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
   event.preventDefault();
 
   const username = dom.loginUsername?.value.trim();
   const password = dom.loginPassword?.value.trim();
 
-  if (username === CONFIG.loginUsername && password === CONFIG.loginPassword) {
+  if (
+    username === CONFIG.loginUsername &&
+    password === CONFIG.loginPassword
+  ) {
     sessionStorage.setItem(CONFIG.storage.login, "true");
+
     dom.loginError?.classList.remove("show");
     dom.loginScreen?.classList.add("hide");
     dom.app?.classList.add("hide");
     dom.loadingScreen?.classList.add("show");
 
-    setTimeout(() => {
+    setTimeout(async () => {
       dom.loadingScreen?.classList.remove("show");
       dom.app?.classList.remove("hide");
-      loadPage(runtime.currentPage || "dashboard");
+
+      await bootFromCloud();
+
       applyLanguage();
       updateRealTimeClock();
+
       showToast(t("loginSuccess"));
     }, CONFIG.loadingDuration);
 
@@ -1259,7 +1287,10 @@ function handleLogin(event) {
   }
 
   dom.loginError?.classList.add("show");
-  if (dom.loginPassword) dom.loginPassword.value = "";
+
+  if (dom.loginPassword) {
+    dom.loginPassword.value = "";
+  }
 }
 
 function logout() {
@@ -2668,7 +2699,7 @@ function checkKh1BrowserReminders() {
     task.browserAlertSentAt = new Date().toISOString();
 
     saveLocal();
-    scheduleCloudSave();
+   
   });
 }
 function manualSave() {
@@ -2847,18 +2878,31 @@ function updateRealTimeClock() {
 async function initApp() {
   bindEvents();
   applyThemeFromStorage();
-  checkLogin();
 
-  const loaded = await loadCloud(false);
-  if (!loaded) saveLocal();
+  const isLoggedIn = checkLogin();
 
-  loadPage("dashboard");
+  if (isLoggedIn) {
+    await bootFromCloud();
+  }
+
   updateRealTimeClock();
-  runtime.clockTimer = setInterval(updateRealTimeClock, 1000);
-  setInterval(checkKh1BrowserReminders, 60 * 1000);
+
+  runtime.clockTimer = setInterval(
+    updateRealTimeClock,
+    1000
+  );
+
+  setInterval(
+    checkKh1BrowserReminders,
+    60 * 1000
+  );
+
   checkKh1BrowserReminders();
 
-  setTimeout(notifyDueItems, 1200);
+  setTimeout(
+    notifyDueItems,
+    1200
+  );
 }
 
 /* =========================================================
