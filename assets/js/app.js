@@ -608,45 +608,46 @@ function getAssistantAdvice() {
 }
 
 function checkLogin() {
-
   const ok = sessionStorage.getItem(LOGIN_KEY) === "true";
 
-  if (ok && loginScreen) {
-
-    // Ẩn login
-    loginScreen.classList.add("hide");
-
-    // Hiện app
-    $("app").classList.remove("hide");
-
+  if (ok) {
+    loginScreen?.classList.add("hide");
+    $("loadingScreen")?.classList.remove("show");
+    $("app")?.classList.remove("hide");
+  } else {
+    loginScreen?.classList.remove("hide");
+    $("app")?.classList.add("hide");
+    $("loadingScreen")?.classList.remove("show");
   }
-
 }
 
 loginForm?.addEventListener("submit", (e) => {
   e.preventDefault();
 
   if (
-    loginUsername.value.trim() === LOGIN_USERNAME &&
-    loginPassword.value.trim() === LOGIN_PASSWORD
-  ) {
-    sessionStorage.setItem(LOGIN_KEY, "true");
-    loginError.classList.remove("show");
+  loginUsername.value.trim() === LOGIN_USERNAME &&
+  loginPassword.value.trim() === LOGIN_PASSWORD
+) {
+  sessionStorage.setItem(LOGIN_KEY, "true");
+  loginError.classList.remove("show");
 
-    loginScreen.classList.add("login-out");
+  loginScreen.classList.add("hide");
+  $("app")?.classList.add("hide");
+  $("loadingScreen")?.classList.add("show");
 
-    setTimeout(() => {
-      loginScreen.classList.add("hide");
-      $("loadingScreen")?.classList.add("show");
-    }, 450);
+  setTimeout(() => {
+    $("loadingScreen")?.classList.remove("show");
+    $("app")?.classList.remove("hide");
 
-    setTimeout(() => {
-      $("loadingScreen")?.classList.remove("show");
-      showToast(t("loginSuccess"));
-    }, 3450);
+    loadPage(currentPage || "dashboard");
+    applyLanguage();
+    updateRealTimeClock?.();
 
-    return;
-  }
+    showToast(t("loginSuccess"));
+  }, 3000);
+
+  return;
+}
 
   loginError.classList.add("show");
   loginPassword.value = "";
