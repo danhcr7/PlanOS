@@ -1,7 +1,4 @@
-import {
-  saveDataToCloud,
-  loadDataFromCloud
-} from "./supabase.js";
+import { saveDataToCloud, loadDataFromCloud } from "./supabase.js";
 
 /* =========================================================
    PlanOS — app.js 2026 Optimized
@@ -1260,10 +1257,7 @@ async function handleLogin(event) {
   const username = dom.loginUsername?.value.trim();
   const password = dom.loginPassword?.value.trim();
 
-  if (
-    username === CONFIG.loginUsername &&
-    password === CONFIG.loginPassword
-  ) {
+  if (username === CONFIG.loginUsername && password === CONFIG.loginPassword) {
     sessionStorage.setItem(CONFIG.storage.login, "true");
 
     dom.loginError?.classList.remove("show");
@@ -1625,7 +1619,95 @@ function renderItem(item) {
     </div>
   `;
 }
+function getPageSearchResults() {
+  const q = runtime.searchQuery.trim().toLowerCase();
+  if (!q) return [];
 
+  return Object.keys(pageInfo)
+    .filter((page) => {
+      const text = [
+        page,
+        t(page),
+        pageInfo[page]?.desc ? t(pageInfo[page].desc) : "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes(q);
+    })
+    .map((page) => ({
+      page,
+      title: t(page),
+      icon: pageInfo[page]?.icon || "📄",
+      desc: pageInfo[page]?.desc ? t(pageInfo[page].desc) : "",
+    }));
+}
+function renderGlobalSearchResults() {
+  const q = runtime.searchQuery.trim();
+
+  const pageResults = getPageSearchResults();
+  const itemResults = getFilteredItems(getAnalytics().all);
+
+  const total = pageResults.length + itemResults.length;
+
+  setContent(`
+    <div class="grid">
+      <div class="card hero small-hero">
+        <p class="eyebrow">GLOBAL SEARCH</p>
+        <h2>🔍 Kết quả tìm kiếm</h2>
+        <p>Đang tìm: <strong>${escapeHTML(q)}</strong></p>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h3>Tìm thấy ${total} kết quả</h3>
+            <p class="muted">Tìm trong trang, nhóm KH, tiêu đề, ghi chú, trạng thái và ngày.</p>
+          </div>
+
+          <button class="ghost-btn" data-action="clear-search">
+            Xóa tìm kiếm
+          </button>
+        </div>
+
+        <div class="list">
+          ${
+            pageResults.length
+              ? pageResults
+                  .map(
+                    (item) => `
+                      <div class="item">
+                        <div>
+                          <strong>${item.icon} ${escapeHTML(item.title)}</strong>
+                          <p class="muted">${escapeHTML(item.desc)}</p>
+                        </div>
+
+                        <button
+                          class="primary-btn"
+                          data-action="open-search-page"
+                          data-page="${escapeAttr(item.page)}"
+                        >
+                          Mở
+                        </button>
+                      </div>
+                    `,
+                  )
+                  .join("")
+              : ""
+          }
+
+          ${itemResults.length ? itemResults.map(renderItem).join("") : ""}
+
+          ${
+            total === 0
+              ? `<p class="muted">Không tìm thấy kết quả nào.</p>`
+              : ""
+          }
+        </div>
+      </div>
+    </div>
+  `);
+}
 /* =========================================================
    PAGES
 ========================================================= */
@@ -2699,7 +2781,6 @@ function checkKh1BrowserReminders() {
     task.browserAlertSentAt = new Date().toISOString();
 
     saveLocal();
-   
   });
 }
 function manualSave() {
@@ -2732,6 +2813,12 @@ function loadPage(pageName) {
     item.classList.toggle("active", item.dataset.page === pageName);
   });
 
+  if (runtime.searchQuery.trim()) {
+    renderGlobalSearchResults();
+    applyLanguage();
+    return;
+  }
+
   const renderer = pageRenderers[pageName] || (() => renderKhPage(pageName));
   renderer();
   applyLanguage();
@@ -2761,6 +2848,22 @@ function handleDocumentClick(event) {
     "manual-load": () => manualLoad(),
     "edit-kh1-todo": () => editKh1Todo(id),
     "delete-kh1-todo": () => deleteKh1Todo(id),
+    "clear-search": () => {
+      runtime.searchQuery = "";
+      if (dom.globalSearch) dom.globalSearch.value = "";
+      loadPage(runtime.currentPage);
+    },
+    "open-search-page": () => {
+      const page = target.dataset.page;
+
+      runtime.searchQuery = "";
+
+      if (dom.globalSearch) {
+        dom.globalSearch.value = "";
+      }
+
+      loadPage(page);
+    },
   };
 
   actions[action]?.();
@@ -2776,7 +2879,7 @@ function bindEvents() {
   });
 
   const debouncedSearch = debounce((value) => {
-    runtime.searchQuery = value;
+    runtime.searchQuery = value.trim();
     loadPage(runtime.currentPage);
   }, CONFIG.searchDelay);
 
@@ -2887,22 +2990,13 @@ async function initApp() {
 
   updateRealTimeClock();
 
-  runtime.clockTimer = setInterval(
-    updateRealTimeClock,
-    1000
-  );
+  runtime.clockTimer = setInterval(updateRealTimeClock, 1000);
 
-  setInterval(
-    checkKh1BrowserReminders,
-    60 * 1000
-  );
+  setInterval(checkKh1BrowserReminders, 60 * 1000);
 
   checkKh1BrowserReminders();
 
-  setTimeout(
-    notifyDueItems,
-    1200
-  );
+  setTimeout(notifyDueItems, 1200);
 }
 
 /* =========================================================
