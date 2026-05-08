@@ -1,41 +1,47 @@
 import { saveDataToCloud, loadDataFromCloud } from "./firebase.js";
 
 /* =========================================================
-   PLANOS APP.JS — UPGRADED VERSION
-   - Compatible with current index.html / style.css
-   - Better dashboard UX
-   - Today Focus
-   - Life Score
-   - KH2 streak analytics
-   - Search debounce
-   - Safer import/export/cloud flow
+   PlanOS — app.js 2026 Optimized
+   Vanilla JS SPA-style architecture
+
+   Goals:
+   - Keep compatible with current index.html / style.css / firebase.js
+   - Reduce unnecessary re-render logic
+   - Centralize state mutation
+   - Add derived analytics cache
+   - Safer cloud/local/import flow
+   - Event delegation instead of many inline-heavy listeners where possible
+   - Better keyboard-first UX
+   - More modern dashboard intelligence
 ========================================================= */
 
-const LOGIN_USERNAME = "danhcr6sdd";
-const LOGIN_PASSWORD = "thanhdanh7777";
+const CONFIG = Object.freeze({
+  loginUsername: "danhcr6sdd",
+  loginPassword: "thanhdanh7777",
+  dailySaving: 15000,
+  heatmapDays: 60,
+  maxActivityLog: 100,
+  saveDelay: 600,
+  searchDelay: 160,
+  loadingDuration: 1600,
+  storage: {
+    data: "planosData",
+    login: "planosLoggedIn",
+    theme: "planosTheme",
+    lang: "planosLang",
+  },
+});
 
-const DAILY_SAVING = 15000;
-const STORAGE_KEY = "planosData";
-const LOGIN_KEY = "planosLoggedIn";
-const THEME_KEY = "planosTheme";
-const LANG_KEY = "planosLang";
+const GROUPS = Object.freeze(["kh1", "kh2", "kh3", "kh4", "kh5", "kh6"]);
 
-const SAVE_DELAY = 550;
-const SEARCH_DELAY = 180;
-const MAX_ACTIVITY_LOG = 80;
-const KH2_HEATMAP_DAYS = 60;
+const STATUS = Object.freeze({
+  todo: "Todo",
+  doing: "Doing",
+  important: "Quan trọng",
+  done: "Xong",
+});
 
-let currentPage = "dashboard";
-let currentLang = localStorage.getItem(LANG_KEY) || "vi";
-let searchQuery = "";
-let saveTimer = null;
-let searchTimer = null;
-let isCloudSaving = false;
-let pendingCloudSave = false;
-let lastSaveAt = 0;
-let appReady = false;
-
-const defaultData = {
+const DEFAULT_DATA = Object.freeze({
   kh1: [],
   kh2: [],
   kh3: [],
@@ -44,7 +50,7 @@ const defaultData = {
   kh6: [],
   kh2Daily: {},
   activityLog: [],
-};
+});
 
 const i18n = {
   vi: {
@@ -100,9 +106,7 @@ const i18n = {
     lifeScore: "⚡ PlanOS Score",
     lifeScoreDesc: "Điểm tổng hợp từ tiến độ, deadline, tài chính và consistency.",
     systemHealth: "System Health",
-    focusNow: "Focus now",
     overdueItems: "Quá hạn",
-    dueToday: "Hôm nay",
     kh2Today: "KH2 hôm nay",
     passedToday: "Đã PASS",
     notPassedToday: "Chưa PASS",
@@ -114,6 +118,9 @@ const i18n = {
     completedThisWeek: "Hoàn thành tuần này",
     addedThisWeek: "Thêm mới tuần này",
     savedThisWeek: "KH2 PASS tuần này",
+    productivityPulse: "Productivity Pulse",
+    priorityLoad: "Priority Load",
+    consistency: "Consistency",
 
     listTitle: "Danh sách",
     crudDesc: "Có đủ 3 chức năng: thêm, sửa, xóa.",
@@ -198,6 +205,8 @@ const i18n = {
     importError: "File import không hợp lệ 😭",
     importSuccess: "Import dữ liệu thành công ✅",
     notificationEnabled: "Đã bật thông báo 🔔",
+    copiedBackup: "Đã chuẩn bị backup ✅",
+    commandHint: "Ctrl+K để tìm kiếm nhanh • Ctrl+N để thêm mới",
   },
 
   en: {
@@ -253,9 +262,7 @@ const i18n = {
     lifeScore: "⚡ PlanOS Score",
     lifeScoreDesc: "Combined score from progress, deadlines, finance and consistency.",
     systemHealth: "System Health",
-    focusNow: "Focus now",
     overdueItems: "Overdue",
-    dueToday: "Today",
     kh2Today: "KH2 today",
     passedToday: "Passed",
     notPassedToday: "Not passed",
@@ -267,6 +274,9 @@ const i18n = {
     completedThisWeek: "Completed this week",
     addedThisWeek: "Added this week",
     savedThisWeek: "KH2 PASS this week",
+    productivityPulse: "Productivity Pulse",
+    priorityLoad: "Priority Load",
+    consistency: "Consistency",
 
     listTitle: "List",
     crudDesc: "Includes add, edit and delete.",
@@ -351,10 +361,12 @@ const i18n = {
     importError: "Invalid import file 😭",
     importSuccess: "Import successful ✅",
     notificationEnabled: "Notifications enabled 🔔",
+    copiedBackup: "Backup ready ✅",
+    commandHint: "Ctrl+K for quick search • Ctrl+N to add new",
   },
 };
 
-const pageInfo = {
+const pageInfo = Object.freeze({
   dashboard: { icon: "🏠" },
   kh1: { icon: "📚", desc: "kh1Desc" },
   kh2: { icon: "💰", desc: "kh2Desc" },
@@ -366,7 +378,7 @@ const pageInfo = {
   kanban: { icon: "🧲", desc: "kanbanDesc" },
   insights: { icon: "📊", desc: "insightsDesc" },
   settings: { icon: "⚙️", desc: "toolsDesc" },
-};
+});
 
 const $ = (id) => document.getElementById(id);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -406,18 +418,32 @@ const dom = {
   loadingScreen: $("loadingScreen"),
 };
 
-let appData = loadLocal();
+const runtime = {
+  currentPage: "dashboard",
+  currentLang: localStorage.getItem(CONFIG.storage.lang) || "vi",
+  searchQuery: "",
+  saveTimer: null,
+  searchTimer: null,
+  toastTimer: null,
+  clockTimer: null,
+  isCloudSaving: false,
+  pendingCloudSave: false,
+  lastSaveAt: 0,
+  analyticsCache: null,
+  analyticsCacheVersion: -1,
+};
+
+const store = {
+  data: loadLocal(),
+  version: 0,
+};
 
 /* =========================================================
-   BASIC HELPERS
+   CORE UTILITIES
 ========================================================= */
 
 function t(key) {
-  return i18n[currentLang]?.[key] || i18n.vi[key] || key;
-}
-
-function getGroupKeys() {
-  return ["kh1", "kh2", "kh3", "kh4", "kh5", "kh6"];
+  return i18n[runtime.currentLang]?.[key] || i18n.vi[key] || key;
 }
 
 function clamp(number, min, max) {
@@ -427,7 +453,7 @@ function clamp(number, min, max) {
 function uid() {
   return (
     crypto?.randomUUID?.() ||
-    Date.now().toString(36) + Math.random().toString(36).slice(2)
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   );
 }
 
@@ -438,6 +464,10 @@ function escapeHTML(text = "") {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeAttr(text = "") {
+  return escapeHTML(text).replaceAll("`", "&#096;");
 }
 
 function formatMoney(amount) {
@@ -451,23 +481,24 @@ function today() {
 }
 
 function addDays(dateString, amount) {
-  const d = new Date(dateString);
+  const d = new Date(`${dateString}T00:00:00`);
   d.setDate(d.getDate() + amount);
   return d.toISOString().slice(0, 10);
 }
 
 function formatDate(dateString) {
   if (!dateString) return t("noDate");
-  const [y, m, d] = dateString.split("-");
+  const [y, m, d] = String(dateString).split("-");
   if (!y || !m || !d) return dateString;
   return `${d}/${m}/${y}`;
 }
 
 function daysBetween(dateString) {
   if (!dateString) return null;
-  const now = new Date(today());
-  const target = new Date(dateString);
-  return Math.ceil((target - now) / 86400000);
+  const now = new Date(`${today()}T00:00:00`);
+  const target = new Date(`${dateString}T00:00:00`);
+  const diff = Math.ceil((target - now) / 86400000);
+  return Number.isFinite(diff) ? diff : null;
 }
 
 function isWithinLastDays(isoString, days = 7) {
@@ -477,17 +508,29 @@ function isWithinLastDays(isoString, days = 7) {
   return Date.now() - time <= days * 86400000;
 }
 
-function badgeClass(status) {
-  if (status === "Xong") return "green";
-  if (status === "Quan trọng") return "red";
-  if (status === "Doing") return "yellow";
-  return "blue";
+function debounce(fn, delay) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function nextFrame(fn) {
+  requestAnimationFrame(() => requestAnimationFrame(fn));
 }
 
 function statusLabel(status) {
-  if (currentLang === "en" && status === "Quan trọng") return "Important";
-  if (currentLang === "en" && status === "Xong") return "Done";
-  return status || "Todo";
+  if (runtime.currentLang === "en" && status === STATUS.important) return "Important";
+  if (runtime.currentLang === "en" && status === STATUS.done) return "Done";
+  return status || STATUS.todo;
+}
+
+function badgeClass(status) {
+  if (status === STATUS.done) return "green";
+  if (status === STATUS.important) return "red";
+  if (status === STATUS.doing) return "yellow";
+  return "blue";
 }
 
 function setButtonBusy(button, isBusy, labelWhenBusy) {
@@ -497,12 +540,14 @@ function setButtonBusy(button, isBusy, labelWhenBusy) {
     button.dataset.oldText = button.textContent;
     button.textContent = labelWhenBusy;
     button.disabled = true;
+    button.setAttribute("aria-busy", "true");
     button.style.opacity = "0.72";
     return;
   }
 
   button.textContent = button.dataset.oldText || button.textContent;
   button.disabled = false;
+  button.removeAttribute("aria-busy");
   button.style.opacity = "";
 }
 
@@ -510,28 +555,46 @@ function showToast(message) {
   if (!dom.toast) return;
   dom.toast.textContent = message;
   dom.toast.classList.add("show");
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => dom.toast.classList.remove("show"), 1900);
+  clearTimeout(runtime.toastTimer);
+  runtime.toastTimer = setTimeout(() => dom.toast.classList.remove("show"), 1900);
+}
+
+function setContent(html) {
+  if (!dom.content) return;
+  dom.content.setAttribute("aria-busy", "true");
+  dom.content.innerHTML = html;
+  nextFrame(() => dom.content?.removeAttribute("aria-busy"));
 }
 
 /* =========================================================
-   DATA / STORAGE
+   DATA NORMALIZATION / STORE
 ========================================================= */
 
 function normalizeItem(item = {}) {
+  const now = new Date().toISOString();
+
   return {
     id: item.id || uid(),
     name: String(item.name || item.title || "").trim(),
     date: item.date || "",
-    status: item.status || "Todo",
+    status: item.status || STATUS.todo,
     note: item.note || "",
-    createdAt: item.createdAt || item.updatedAt || new Date().toISOString(),
-    updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
+    createdAt: item.createdAt || item.updatedAt || now,
+    updatedAt: item.updatedAt || item.createdAt || now,
+  };
+}
+
+function normalizeKh2Record(record = {}) {
+  return {
+    saved: Boolean(record.saved),
+    withdraw: Math.max(0, Number(record.withdraw || 0)),
+    note: record.note || "",
+    updatedAt: record.updatedAt || new Date().toISOString(),
   };
 }
 
 function normalizeData(raw = {}) {
-  const safe = { ...defaultData, ...(raw || {}) };
+  const safe = { ...DEFAULT_DATA, ...(raw || {}) };
   const normalized = {
     kh1: [],
     kh2: [],
@@ -539,99 +602,130 @@ function normalizeData(raw = {}) {
     kh4: [],
     kh5: [],
     kh6: [],
-    kh2Daily: safe.kh2Daily || safe.kh2Data || {},
+    kh2Daily: {},
     activityLog: Array.isArray(safe.activityLog) ? safe.activityLog : [],
   };
 
-  getGroupKeys().forEach((key) => {
+  GROUPS.forEach((key) => {
     normalized[key] = Array.isArray(safe[key])
       ? safe[key].map(normalizeItem).filter((item) => item.name)
       : [];
   });
 
   normalized.kh2Daily = Object.fromEntries(
-    Object.entries(normalized.kh2Daily || {}).map(([date, record]) => [
+    Object.entries(safe.kh2Daily || safe.kh2Data || {}).map(([date, record]) => [
       date,
-      {
-        saved: Boolean(record?.saved),
-        withdraw: Number(record?.withdraw || 0),
-        note: record?.note || "",
-        updatedAt: record?.updatedAt || new Date().toISOString(),
-      },
+      normalizeKh2Record(record),
     ]),
   );
 
   normalized.activityLog = normalized.activityLog
     .filter((log) => log && log.action)
-    .slice(0, MAX_ACTIVITY_LOG);
+    .map((log) => ({
+      id: log.id || uid(),
+      action: log.action,
+      detail: log.detail || "",
+      at: log.at || new Date().toISOString(),
+    }))
+    .slice(0, CONFIG.maxActivityLog);
 
   return normalized;
 }
 
 function loadLocal() {
   try {
-    return normalizeData(JSON.parse(localStorage.getItem(STORAGE_KEY)) || {});
+    return normalizeData(JSON.parse(localStorage.getItem(CONFIG.storage.data)) || {});
   } catch (error) {
-    console.warn("Local data parse error:", error);
+    console.warn("PlanOS local data parse error:", error);
     return normalizeData();
   }
 }
 
 function saveLocal() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  localStorage.setItem(CONFIG.storage.data, JSON.stringify(store.data));
+}
+
+function invalidateAnalytics() {
+  store.version += 1;
+  runtime.analyticsCache = null;
+}
+
+function commit(mutator, options = {}) {
+  const { activity, render = true, cloud = true, toast = "" } = options;
+  mutator(store.data);
+
+  if (activity) addActivity(activity.action, activity.detail, false);
+
+  invalidateAnalytics();
+  saveLocal();
+
+  if (cloud) scheduleCloudSave();
+  if (render) loadPage(runtime.currentPage);
+  if (toast) showToast(toast);
+}
+
+function addActivity(action, detail, bump = true) {
+  store.data.activityLog.unshift({
+    id: uid(),
+    action,
+    detail,
+    at: new Date().toISOString(),
+  });
+
+  store.data.activityLog = store.data.activityLog.slice(0, CONFIG.maxActivityLog);
+  if (bump) invalidateAnalytics();
+}
+
+/* =========================================================
+   CLOUD SYNC
+========================================================= */
+
+function scheduleCloudSave() {
+  clearTimeout(runtime.saveTimer);
+  runtime.saveTimer = setTimeout(() => saveCloud(false), CONFIG.saveDelay);
 }
 
 async function saveCloud(showMessage = false) {
-  if (isCloudSaving) {
-    pendingCloudSave = true;
+  if (runtime.isCloudSaving) {
+    runtime.pendingCloudSave = true;
     return;
   }
 
-  isCloudSaving = true;
-  pendingCloudSave = false;
+  runtime.isCloudSaving = true;
+  runtime.pendingCloudSave = false;
 
   if (showMessage) setButtonBusy(dom.cloudSaveBtn, true, t("cloudSaving"));
 
   try {
     const payload = {
-      ...appData,
+      ...store.data,
       savedAt: new Date().toISOString(),
       version: Date.now(),
     };
 
     await saveDataToCloud(payload);
-    lastSaveAt = Date.now();
+    runtime.lastSaveAt = Date.now();
 
     if (showMessage) showToast(t("cloudSaved"));
   } catch (error) {
     console.error("Firebase save error:", error);
-    pendingCloudSave = true;
+    runtime.pendingCloudSave = true;
     if (showMessage) showToast(t("cloudError"));
   } finally {
-    isCloudSaving = false;
+    runtime.isCloudSaving = false;
     if (showMessage) setButtonBusy(dom.cloudSaveBtn, false);
 
-    if (pendingCloudSave) {
-      pendingCloudSave = false;
+    if (runtime.pendingCloudSave) {
+      runtime.pendingCloudSave = false;
       setTimeout(() => saveCloud(false), 300);
     }
   }
 }
 
-function saveAll(showMessage = false) {
-  saveLocal();
-  clearTimeout(saveTimer);
-
-  if (showMessage) {
-    saveCloud(true);
-    return;
-  }
-
-  saveTimer = setTimeout(() => saveCloud(false), SAVE_DELAY);
-}
-
 async function loadCloud(showMessage = false) {
-  if (showMessage) setButtonBusy(dom.cloudLoadBtn, true, currentLang === "vi" ? "Đang tải..." : "Loading...");
+  if (showMessage) {
+    setButtonBusy(dom.cloudLoadBtn, true, runtime.currentLang === "vi" ? "Đang tải..." : "Loading...");
+  }
 
   try {
     const data = await loadDataFromCloud();
@@ -641,9 +735,10 @@ async function loadCloud(showMessage = false) {
       return false;
     }
 
-    appData = normalizeData(data);
+    store.data = normalizeData(data);
+    invalidateAnalytics();
     saveLocal();
-    loadPage(currentPage);
+    loadPage(runtime.currentPage);
 
     if (showMessage) showToast(t("cloudLoaded"));
     return true;
@@ -656,30 +751,17 @@ async function loadCloud(showMessage = false) {
   }
 }
 
-function addActivity(action, detail) {
-  appData.activityLog.unshift({
-    id: uid(),
-    action,
-    detail,
-    at: new Date().toISOString(),
-  });
-
-  appData.activityLog = appData.activityLog.slice(0, MAX_ACTIVITY_LOG);
-}
-
 /* =========================================================
-   SELECTORS / ANALYTICS
+   DERIVED DATA / ANALYTICS CACHE
 ========================================================= */
 
 function getAllItems() {
-  return getGroupKeys().flatMap((key) =>
-    appData[key].map((item) => ({ ...item, group: key })),
-  );
+  return GROUPS.flatMap((key) => store.data[key].map((item) => ({ ...item, group: key })));
 }
 
-function filterItems(items) {
-  if (!searchQuery.trim()) return items;
-  const q = searchQuery.trim().toLowerCase();
+function getFilteredItems(items) {
+  const q = runtime.searchQuery.trim().toLowerCase();
+  if (!q) return items;
 
   return items.filter((item) =>
     [item.name, item.note, item.status, item.date, item.group, t(item.group)]
@@ -689,45 +771,76 @@ function filterItems(items) {
   );
 }
 
+function getAnalytics() {
+  if (runtime.analyticsCache && runtime.analyticsCacheVersion === store.version) {
+    return runtime.analyticsCache;
+  }
+
+  const all = getAllItems();
+  const done = all.filter((i) => i.status === STATUS.done).length;
+  const important = all.filter((i) => i.status === STATUS.important).length;
+  const overdue = all.filter((i) => i.status !== STATUS.done && i.date && daysBetween(i.date) < 0).length;
+  const dueSoon = all
+    .filter((item) => item.status !== STATUS.done && item.date)
+    .map((item) => ({ ...item, daysLeft: daysBetween(item.date) }))
+    .filter((item) => item.daysLeft !== null && item.daysLeft <= 3)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  const kh2 = getKh2Stats();
+  const weekly = getWeeklyStats(all);
+  const life = getLifeScore(all, kh2, { done, important, overdue });
+
+  runtime.analyticsCache = {
+    all,
+    done,
+    important,
+    overdue,
+    dueSoon,
+    kh2,
+    weekly,
+    life,
+    todayFocus: getTodayFocusItems(all),
+  };
+  runtime.analyticsCacheVersion = store.version;
+  return runtime.analyticsCache;
+}
+
 function getDueItems(maxDays = 3) {
   return getAllItems()
-    .filter((item) => item.status !== "Xong" && item.date)
+    .filter((item) => item.status !== STATUS.done && item.date)
     .map((item) => ({ ...item, daysLeft: daysBetween(item.date) }))
     .filter((item) => item.daysLeft !== null && item.daysLeft <= maxDays)
     .sort((a, b) => a.daysLeft - b.daysLeft);
 }
 
-function getTodayFocusItems() {
-  return getAllItems()
-    .filter((item) => item.status !== "Xong")
+function getTodayFocusItems(items = getAllItems()) {
+  return items
+    .filter((item) => item.status !== STATUS.done)
     .map((item) => ({ ...item, daysLeft: item.date ? daysBetween(item.date) : null }))
     .filter(
       (item) =>
-        item.status === "Quan trọng" ||
-        item.daysLeft === null ||
-        item.daysLeft <= 1,
+        item.status === STATUS.important ||
+        (item.daysLeft !== null && item.daysLeft <= 1),
     )
-    .sort((a, b) => {
-      const score = (item) => {
-        if (item.daysLeft !== null && item.daysLeft < 0) return -100 + item.daysLeft;
-        if (item.daysLeft === 0) return -50;
-        if (item.status === "Quan trọng") return -20;
-        if (item.daysLeft === 1) return -10;
-        return 10;
-      };
-      return score(a) - score(b);
-    })
+    .sort((a, b) => focusScore(a) - focusScore(b))
     .slice(0, 6);
 }
 
-function getKh2Stats() {
-  const records = Object.values(appData.kh2Daily || {});
-  const passDays = records.filter((d) => d.saved).length;
-  const totalSaved = passDays * DAILY_SAVING;
-  const totalWithdraw = records.reduce((sum, d) => sum + Number(d.withdraw || 0), 0);
+function focusScore(item) {
+  if (item.daysLeft !== null && item.daysLeft < 0) return -100 + item.daysLeft;
+  if (item.daysLeft === 0) return -70;
+  if (item.status === STATUS.important) return -40;
+  if (item.daysLeft === 1) return -20;
+  return 10;
+}
 
+function getKh2Stats() {
+  const records = Object.values(store.data.kh2Daily || {});
+  const passDays = records.filter((d) => d.saved).length;
+  const totalSaved = passDays * CONFIG.dailySaving;
+  const totalWithdraw = records.reduce((sum, d) => sum + Number(d.withdraw || 0), 0);
   const streaks = getKh2Streaks();
-  const passRate60 = getKh2PassRate(KH2_HEATMAP_DAYS);
+  const passRate60 = getKh2PassRate(CONFIG.heatmapDays);
 
   return {
     passDays,
@@ -741,12 +854,12 @@ function getKh2Stats() {
 }
 
 function getKh2Streaks() {
-  const records = appData.kh2Daily || {};
+  const records = store.data.kh2Daily || {};
   let current = 0;
   let best = 0;
   let running = 0;
 
-  for (let i = KH2_HEATMAP_DAYS - 1; i >= 0; i--) {
+  for (let i = CONFIG.heatmapDays - 1; i >= 0; i--) {
     const date = addDays(today(), -i);
     if (records[date]?.saved) {
       running += 1;
@@ -756,7 +869,7 @@ function getKh2Streaks() {
     }
   }
 
-  for (let i = 0; i < KH2_HEATMAP_DAYS; i++) {
+  for (let i = 0; i < CONFIG.heatmapDays; i++) {
     const date = addDays(today(), -i);
     if (records[date]?.saved) current += 1;
     else break;
@@ -765,44 +878,37 @@ function getKh2Streaks() {
   return { current, best };
 }
 
-function getKh2PassRate(days = 60) {
+function getKh2PassRate(days = CONFIG.heatmapDays) {
   let pass = 0;
-  let recorded = 0;
 
   for (let i = 0; i < days; i++) {
     const date = addDays(today(), -i);
-    const record = appData.kh2Daily?.[date];
-    if (record) recorded += 1;
-    if (record?.saved) pass += 1;
+    if (store.data.kh2Daily?.[date]?.saved) pass += 1;
   }
 
-  if (!recorded) return 0;
   return Math.round((pass / days) * 100);
 }
 
-function getWeeklyStats() {
-  const all = getAllItems();
+function getWeeklyStats(all = getAllItems()) {
   const completedThisWeek = all.filter(
-    (item) => item.status === "Xong" && isWithinLastDays(item.updatedAt, 7),
+    (item) => item.status === STATUS.done && isWithinLastDays(item.updatedAt, 7),
   ).length;
   const addedThisWeek = all.filter((item) => isWithinLastDays(item.createdAt, 7)).length;
 
   let savedThisWeek = 0;
   for (let i = 0; i < 7; i++) {
     const date = addDays(today(), -i);
-    if (appData.kh2Daily?.[date]?.saved) savedThisWeek += 1;
+    if (store.data.kh2Daily?.[date]?.saved) savedThisWeek += 1;
   }
 
   return { completedThisWeek, addedThisWeek, savedThisWeek };
 }
 
-function getLifeScore() {
-  const all = getAllItems();
+function getLifeScore(all = getAllItems(), kh2 = getKh2Stats(), counts = {}) {
   const total = all.length;
-  const done = all.filter((i) => i.status === "Xong").length;
-  const overdue = all.filter((i) => i.status !== "Xong" && i.date && daysBetween(i.date) < 0).length;
-  const important = all.filter((i) => i.status === "Quan trọng").length;
-  const kh2 = getKh2Stats();
+  const done = counts.done ?? all.filter((i) => i.status === STATUS.done).length;
+  const overdue = counts.overdue ?? all.filter((i) => i.status !== STATUS.done && i.date && daysBetween(i.date) < 0).length;
+  const important = counts.important ?? all.filter((i) => i.status === STATUS.important).length;
 
   const completionScore = total ? (done / total) * 35 : 18;
   const deadlineScore = clamp(30 - overdue * 7, 0, 30);
@@ -810,45 +916,45 @@ function getLifeScore() {
   const consistencyScore = clamp(kh2.passRate60 / 100, 0, 1) * 15;
   const penalty = Math.min(important * 1.5, 8);
 
-  const score = Math.round(clamp(completionScore + deadlineScore + financeScore + consistencyScore - penalty, 0, 100));
+  const score = Math.round(
+    clamp(completionScore + deadlineScore + financeScore + consistencyScore - penalty, 0, 100),
+  );
 
-  let label = "Stable";
-  if (score >= 85) label = currentLang === "vi" ? "Rất tốt" : "Excellent";
-  else if (score >= 70) label = currentLang === "vi" ? "Ổn định" : "Stable";
-  else if (score >= 50) label = currentLang === "vi" ? "Cần chú ý" : "Needs attention";
-  else label = currentLang === "vi" ? "Cần xử lý" : "Critical";
+  let label = runtime.currentLang === "vi" ? "Ổn định" : "Stable";
+  if (score >= 85) label = runtime.currentLang === "vi" ? "Rất tốt" : "Excellent";
+  else if (score >= 70) label = runtime.currentLang === "vi" ? "Ổn định" : "Stable";
+  else if (score >= 50) label = runtime.currentLang === "vi" ? "Cần chú ý" : "Needs attention";
+  else label = runtime.currentLang === "vi" ? "Cần xử lý" : "Critical";
 
   return { score, label, overdue, important };
 }
 
 function getAssistantAdvice() {
-  const stats = getKh2Stats();
-  const due = getDueItems(3);
-  const life = getLifeScore();
-  const todayKh2 = Boolean(appData.kh2Daily?.[today()]?.saved);
+  const { kh2, dueSoon, life } = getAnalytics();
+  const todayKh2 = Boolean(store.data.kh2Daily?.[today()]?.saved);
 
-  if (currentLang === "en") {
+  if (runtime.currentLang === "en") {
     const arr = [
       `PlanOS Score is ${life.score}/100 — ${life.label}.`,
-      stats.balance < 0
-        ? `KH2 is negative by ${formatMoney(Math.abs(stats.balance))}. Prioritize refunding the fund.`
-        : `KH2 is positive by ${formatMoney(stats.balance)}. Financial status looks stable.`,
+      kh2.balance < 0
+        ? `KH2 is negative by ${formatMoney(Math.abs(kh2.balance))}. Prioritize refunding the fund.`
+        : `KH2 is positive by ${formatMoney(kh2.balance)}. Financial status looks stable.`,
     ];
     if (!todayKh2) arr.push("KH2 has not passed today yet.");
-    if (due.length) arr.push(`${due.length} items are due soon.`);
-    if (stats.currentStreak) arr.push(`Current KH2 streak: ${stats.currentStreak} days.`);
+    if (dueSoon.length) arr.push(`${dueSoon.length} items are due soon.`);
+    if (kh2.currentStreak) arr.push(`Current KH2 streak: ${kh2.currentStreak} days.`);
     return arr;
   }
 
   const arr = [
     `PlanOS Score hiện tại là ${life.score}/100 — ${life.label}.`,
-    stats.balance < 0
-      ? `KH2 đang âm ${formatMoney(Math.abs(stats.balance))}, nên ưu tiên bù quỹ.`
-      : `KH2 đang dương ${formatMoney(stats.balance)}, tình hình tài chính ổn.`,
+    kh2.balance < 0
+      ? `KH2 đang âm ${formatMoney(Math.abs(kh2.balance))}, nên ưu tiên bù quỹ.`
+      : `KH2 đang dương ${formatMoney(kh2.balance)}, tình hình tài chính ổn.`,
   ];
   if (!todayKh2) arr.push("KH2 hôm nay chưa PASS, nên cập nhật trước khi kết thúc ngày.");
-  if (due.length) arr.push(`Có ${due.length} mục gần hạn, nên xử lý trước.`);
-  if (stats.currentStreak) arr.push(`Bạn đang giữ streak KH2 ${stats.currentStreak} ngày.`);
+  if (dueSoon.length) arr.push(`Có ${dueSoon.length} mục gần hạn, nên xử lý trước.`);
+  if (kh2.currentStreak) arr.push(`Bạn đang giữ streak KH2 ${kh2.currentStreak} ngày.`);
   return arr;
 }
 
@@ -859,11 +965,11 @@ function getAssistantAdvice() {
 function applyLanguage() {
   if (dom.globalSearch) dom.globalSearch.placeholder = t("search");
   if (dom.addPlanBtn) dom.addPlanBtn.textContent = t("add");
-  if (dom.cloudSaveBtn && !isCloudSaving) dom.cloudSaveBtn.textContent = t("save");
+  if (dom.cloudSaveBtn && !runtime.isCloudSaving) dom.cloudSaveBtn.textContent = t("save");
   if (dom.cloudLoadBtn) dom.cloudLoadBtn.textContent = t("load");
   if (dom.logoutBtn) dom.logoutBtn.textContent = t("logout");
-  if (dom.langBtn) dom.langBtn.textContent = currentLang.toUpperCase();
-  if (dom.pageTitle) dom.pageTitle.textContent = t(currentPage);
+  if (dom.langBtn) dom.langBtn.textContent = runtime.currentLang.toUpperCase();
+  if (dom.pageTitle) dom.pageTitle.textContent = t(runtime.currentPage);
   if (dom.cancelModalBtn) dom.cancelModalBtn.textContent = t("cancel");
   if ($("modalSaveBtn")) $("modalSaveBtn").textContent = t("formSave");
 
@@ -876,7 +982,7 @@ function applyLanguage() {
 }
 
 function applyThemeFromStorage() {
-  const saved = localStorage.getItem(THEME_KEY);
+  const saved = localStorage.getItem(CONFIG.storage.theme);
   document.body.classList.toggle("light", saved === "light");
   if (dom.themeBtn) dom.themeBtn.textContent = saved === "light" ? "☀️" : "🌙";
 }
@@ -884,7 +990,7 @@ function applyThemeFromStorage() {
 function toggleTheme() {
   document.body.classList.toggle("light");
   const isLight = document.body.classList.contains("light");
-  localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
+  localStorage.setItem(CONFIG.storage.theme, isLight ? "light" : "dark");
   if (dom.themeBtn) dom.themeBtn.textContent = isLight ? "☀️" : "🌙";
 }
 
@@ -893,17 +999,11 @@ function toggleTheme() {
 ========================================================= */
 
 function checkLogin() {
-  const ok = sessionStorage.getItem(LOGIN_KEY) === "true";
+  const ok = sessionStorage.getItem(CONFIG.storage.login) === "true";
 
-  if (ok) {
-    dom.loginScreen?.classList.add("hide");
-    dom.loadingScreen?.classList.remove("show");
-    dom.app?.classList.remove("hide");
-  } else {
-    dom.loginScreen?.classList.remove("hide");
-    dom.app?.classList.add("hide");
-    dom.loadingScreen?.classList.remove("show");
-  }
+  dom.loginScreen?.classList.toggle("hide", ok);
+  dom.app?.classList.toggle("hide", !ok);
+  dom.loadingScreen?.classList.remove("show");
 
   return ok;
 }
@@ -914,8 +1014,8 @@ function handleLogin(event) {
   const username = dom.loginUsername?.value.trim();
   const password = dom.loginPassword?.value.trim();
 
-  if (username === LOGIN_USERNAME && password === LOGIN_PASSWORD) {
-    sessionStorage.setItem(LOGIN_KEY, "true");
+  if (username === CONFIG.loginUsername && password === CONFIG.loginPassword) {
+    sessionStorage.setItem(CONFIG.storage.login, "true");
     dom.loginError?.classList.remove("show");
     dom.loginScreen?.classList.add("hide");
     dom.app?.classList.add("hide");
@@ -924,11 +1024,11 @@ function handleLogin(event) {
     setTimeout(() => {
       dom.loadingScreen?.classList.remove("show");
       dom.app?.classList.remove("hide");
-      loadPage(currentPage || "dashboard");
+      loadPage(runtime.currentPage || "dashboard");
       applyLanguage();
       updateRealTimeClock();
       showToast(t("loginSuccess"));
-    }, 2200);
+    }, CONFIG.loadingDuration);
 
     return;
   }
@@ -938,7 +1038,7 @@ function handleLogin(event) {
 }
 
 function logout() {
-  sessionStorage.removeItem(LOGIN_KEY);
+  sessionStorage.removeItem(CONFIG.storage.login);
   location.reload();
 }
 
@@ -948,7 +1048,7 @@ function logout() {
 
 function statCard(title, value, desc, extraClass = "") {
   return `
-    <div class="card ${extraClass}">
+    <div class="card ${escapeAttr(extraClass)}">
       <h3>${title}</h3>
       <p class="big">${value}</p>
       <p class="muted">${desc}</p>
@@ -959,7 +1059,7 @@ function statCard(title, value, desc, extraClass = "") {
 function renderScoreRing(score) {
   const angle = clamp(score, 0, 100) * 3.6;
   return `
-    <div class="score-ring" style="--score-angle: ${angle}deg">
+    <div class="score-ring" style="--score-angle: ${angle}deg" aria-label="PlanOS Score ${score} out of 100">
       <div>
         <strong>${score}</strong>
         <span>/100</span>
@@ -981,7 +1081,7 @@ function renderMiniMetric(label, value, detail = "") {
 }
 
 function renderItem(item) {
-  const group = item.group || currentPage;
+  const group = item.group || runtime.currentPage;
   const left = item.date ? daysBetween(item.date) : null;
   const dueText =
     left === null
@@ -991,7 +1091,7 @@ function renderItem(item) {
         : ` • ${t("left")} ${left} ${t("days")}`;
 
   return `
-    <div class="item">
+    <div class="item" data-item-id="${escapeAttr(item.id)}" data-group="${escapeAttr(group)}">
       <div>
         <strong>${escapeHTML(item.name)}</strong>
         <p class="muted">
@@ -1004,32 +1104,29 @@ function renderItem(item) {
 
       <div class="item-actions">
         <span class="badge ${badgeClass(item.status)}">${escapeHTML(statusLabel(item.status))}</span>
-        <button class="mini-btn" onclick="openEditModal('${group}', '${item.id}')">${t("edit")}</button>
-        <button class="mini-btn danger" onclick="deleteItem('${group}', '${item.id}')">${t("delete")}</button>
+        <button class="mini-btn" data-action="edit-item" data-group="${escapeAttr(group)}" data-id="${escapeAttr(item.id)}">${t("edit")}</button>
+        <button class="mini-btn danger" data-action="delete-item" data-group="${escapeAttr(group)}" data-id="${escapeAttr(item.id)}">${t("delete")}</button>
       </div>
     </div>
   `;
 }
 
 /* =========================================================
-   RENDER PAGES
+   PAGES
 ========================================================= */
 
 function renderDashboard() {
-  const stats = getKh2Stats();
-  const allItems = filterItems(getAllItems());
-  const done = allItems.filter((i) => i.status === "Xong").length;
-  const important = allItems.filter((i) => i.status === "Quan trọng").length;
-  const due = getDueItems(3);
-  const focus = getTodayFocusItems();
+  const analytics = getAnalytics();
+  const allItems = getFilteredItems(analytics.all);
+  const done = allItems.filter((i) => i.status === STATUS.done).length;
+  const important = allItems.filter((i) => i.status === STATUS.important).length;
   const advice = getAssistantAdvice();
-  const life = getLifeScore();
-  const weekly = getWeeklyStats();
-  const kh2Today = Boolean(appData.kh2Daily?.[today()]?.saved);
+  const kh2Today = Boolean(store.data.kh2Daily?.[today()]?.saved);
 
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero">
+        <p class="eyebrow">${t("commandHint")}</p>
         <h2>${t("heroTitle")}</h2>
         <p>${t("heroDesc")}</p>
       </div>
@@ -1041,11 +1138,11 @@ function renderDashboard() {
               <h3>${t("lifeScore")}</h3>
               <p class="muted">${t("lifeScoreDesc")}</p>
             </div>
-            ${renderScoreRing(life.score)}
+            ${renderScoreRing(analytics.life.score)}
           </div>
           <div class="list">
-            ${renderMiniMetric(t("systemHealth"), life.label, `${life.overdue} ${t("overdueItems")} • ${life.important} ${t("important")}`)}
-            ${renderMiniMetric(t("kh2Today"), kh2Today ? t("passedToday") : t("notPassedToday"), `${t("currentStreak")}: ${stats.currentStreak} ${t("days")}`)}
+            ${renderMiniMetric(t("systemHealth"), analytics.life.label, `${analytics.life.overdue} ${t("overdueItems")} • ${analytics.life.important} ${t("important")}`)}
+            ${renderMiniMetric(t("kh2Today"), kh2Today ? t("passedToday") : t("notPassedToday"), `${t("currentStreak")}: ${analytics.kh2.currentStreak} ${t("days")}`)}
           </div>
         </div>
 
@@ -1055,10 +1152,10 @@ function renderDashboard() {
               <h3>${t("todayFocus")}</h3>
               <p class="muted">${t("todayFocusDesc")}</p>
             </div>
-            <button class="primary-btn" onclick="openAddModal('kh1')">${t("addPlan")}</button>
+            <button class="primary-btn" data-action="add-item" data-group="kh1">${t("addPlan")}</button>
           </div>
           <div class="list">
-            ${focus.length ? focus.map(renderItem).join("") : `<p class="muted">${t("noTodayFocus")}</p>`}
+            ${analytics.todayFocus.length ? analytics.todayFocus.map(renderItem).join("") : `<p class="muted">${t("noTodayFocus")}</p>`}
           </div>
         </div>
       </div>
@@ -1067,14 +1164,14 @@ function renderDashboard() {
         ${statCard(t("totalItems"), allItems.length, t("totalSystem"))}
         ${statCard(t("completed"), done, t("completedDesc"))}
         ${statCard(t("important"), important, t("importantDesc"))}
-        ${statCard(t("kh2Balance"), formatMoney(stats.balance), t("balanceDesc"), stats.balance < 0 ? "danger-text" : "success-text")}
+        ${statCard(t("kh2Balance"), formatMoney(analytics.kh2.balance), t("balanceDesc"), analytics.kh2.balance < 0 ? "danger-text" : "success-text")}
       </div>
 
       <div class="grid grid-4">
-        ${statCard(t("currentStreak"), stats.currentStreak, "KH2")}
-        ${statCard(t("bestStreak"), stats.bestStreak, "KH2")}
-        ${statCard(t("passRate"), `${stats.passRate60}%`, "KH2")}
-        ${statCard(t("fundBalance"), formatMoney(stats.balance), t("balanceDesc"), stats.balance < 0 ? "danger-text" : "success-text")}
+        ${statCard(t("currentStreak"), analytics.kh2.currentStreak, "KH2")}
+        ${statCard(t("bestStreak"), analytics.kh2.bestStreak, "KH2")}
+        ${statCard(t("passRate"), `${analytics.kh2.passRate60}%`, "KH2")}
+        ${statCard(t("fundBalance"), formatMoney(analytics.kh2.balance), t("balanceDesc"), analytics.kh2.balance < 0 ? "danger-text" : "success-text")}
       </div>
 
       <div class="grid grid-2">
@@ -1089,9 +1186,9 @@ function renderDashboard() {
           <h3>${t("weeklyReview")}</h3>
           <p class="muted">${t("weeklyReviewDesc")}</p>
           <div class="list">
-            ${renderMiniMetric(t("completedThisWeek"), weekly.completedThisWeek)}
-            ${renderMiniMetric(t("addedThisWeek"), weekly.addedThisWeek)}
-            ${renderMiniMetric(t("savedThisWeek"), `${weekly.savedThisWeek}/7`)}
+            ${renderMiniMetric(t("completedThisWeek"), analytics.weekly.completedThisWeek)}
+            ${renderMiniMetric(t("addedThisWeek"), analytics.weekly.addedThisWeek)}
+            ${renderMiniMetric(t("savedThisWeek"), `${analytics.weekly.savedThisWeek}/7`)}
           </div>
         </div>
       </div>
@@ -1100,7 +1197,7 @@ function renderDashboard() {
         <div class="card">
           <h3>${t("dueTitle")}</h3>
           <div class="list">
-            ${due.length ? due.slice(0, 6).map(renderItem).join("") : `<p class="muted">${t("noDue")}</p>`}
+            ${analytics.dueSoon.length ? analytics.dueSoon.slice(0, 6).map(renderItem).join("") : `<p class="muted">${t("noDue")}</p>`}
           </div>
         </div>
 
@@ -1117,15 +1214,15 @@ function renderDashboard() {
         </div>
       </div>
     </div>
-  `;
+  `);
 }
 
 function renderKhPage(key) {
   if (key === "kh2") return renderKh2();
 
-  const items = filterItems(appData[key].map((item) => ({ ...item, group: key })));
+  const items = getFilteredItems(store.data[key].map((item) => ({ ...item, group: key })));
 
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero small-hero">
         <h2>${pageInfo[key].icon} ${t(key)}</h2>
@@ -1138,7 +1235,7 @@ function renderKhPage(key) {
             <h3>${t("listTitle")} ${t(key)}</h3>
             <p class="muted">${t("crudDesc")}</p>
           </div>
-          <button class="primary-btn" onclick="openAddModal('${key}')">
+          <button class="primary-btn" data-action="add-item" data-group="${key}">
             ${t("addTo")} ${key.toUpperCase()}
           </button>
         </div>
@@ -1148,13 +1245,13 @@ function renderKhPage(key) {
         </div>
       </div>
     </div>
-  `;
+  `);
 }
 
 function renderKh2() {
-  const s = getKh2Stats();
+  const { kh2 } = getAnalytics();
 
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero small-hero">
         <h2>💰 ${t("kh2")}</h2>
@@ -1162,17 +1259,17 @@ function renderKh2() {
       </div>
 
       <div class="grid grid-4">
-        ${statCard(t("passDays"), s.passDays, t("passDaysDesc"))}
-        ${statCard(t("currentStreak"), s.currentStreak, "KH2")}
-        ${statCard(t("bestStreak"), s.bestStreak, "KH2")}
-        ${statCard(t("passRate"), `${s.passRate60}%`, `Last ${KH2_HEATMAP_DAYS} days`)}
+        ${statCard(t("passDays"), kh2.passDays, t("passDaysDesc"))}
+        ${statCard(t("currentStreak"), kh2.currentStreak, "KH2")}
+        ${statCard(t("bestStreak"), kh2.bestStreak, "KH2")}
+        ${statCard(t("passRate"), `${kh2.passRate60}%`, `Last ${CONFIG.heatmapDays} days`)}
       </div>
 
       <div class="grid grid-4">
-        ${statCard(t("totalSaved"), formatMoney(s.totalSaved), t("totalSavedDesc"))}
-        ${statCard(t("totalWithdraw"), formatMoney(s.totalWithdraw), t("totalWithdrawDesc"))}
-        ${statCard(t("fundBalance"), formatMoney(s.balance), t("balanceDesc"), s.balance < 0 ? "danger-text" : "success-text")}
-        ${statCard(t("kh2Today"), appData.kh2Daily?.[today()]?.saved ? t("passedToday") : t("notPassedToday"), formatDate(today()))}
+        ${statCard(t("totalSaved"), formatMoney(kh2.totalSaved), t("totalSavedDesc"))}
+        ${statCard(t("totalWithdraw"), formatMoney(kh2.totalWithdraw), t("totalWithdrawDesc"))}
+        ${statCard(t("fundBalance"), formatMoney(kh2.balance), t("balanceDesc"), kh2.balance < 0 ? "danger-text" : "success-text")}
+        ${statCard(t("kh2Today"), store.data.kh2Daily?.[today()]?.saved ? t("passedToday") : t("notPassedToday"), formatDate(today()))}
       </div>
 
       <div class="grid grid-2">
@@ -1214,10 +1311,10 @@ function renderKh2() {
       <div class="card">
         <div class="section-head">
           <div><h3>${t("kh2PrivateNotes")}</h3><p class="muted">${t("kh2PrivateDesc")}</p></div>
-          <button class="primary-btn" onclick="openAddModal('kh2')">${t("addKh2")}</button>
+          <button class="primary-btn" data-action="add-item" data-group="kh2">${t("addKh2")}</button>
         </div>
         <div class="list">
-          ${appData.kh2.length ? appData.kh2.map((i) => renderItem({ ...i, group: "kh2" })).join("") : `<p class="muted">${t("kh2Empty")}</p>`}
+          ${store.data.kh2.length ? store.data.kh2.map((i) => renderItem({ ...i, group: "kh2" })).join("") : `<p class="muted">${t("kh2Empty")}</p>`}
         </div>
       </div>
 
@@ -1226,18 +1323,17 @@ function renderKh2() {
         <div class="list">${renderKh2History()}</div>
       </div>
     </div>
-  `;
+  `);
 
   initKh2Form();
-  initKh2HeatmapClick();
 }
 
 function renderKh2Heatmap() {
   const cells = [];
 
-  for (let i = KH2_HEATMAP_DAYS - 1; i >= 0; i--) {
+  for (let i = CONFIG.heatmapDays - 1; i >= 0; i--) {
     const key = addDays(today(), -i);
-    const record = appData.kh2Daily[key];
+    const record = store.data.kh2Daily[key];
 
     let cls = "heat-cell empty-cell";
     if (record?.saved) cls = "heat-cell pass-cell";
@@ -1249,6 +1345,7 @@ function renderKh2Heatmap() {
         class="${cls}"
         title="${key}"
         aria-label="KH2 ${key}"
+        data-action="select-kh2-date"
         data-date="${key}"
       ></button>
     `);
@@ -1258,7 +1355,7 @@ function renderKh2Heatmap() {
 }
 
 function renderKh2History() {
-  const entries = Object.entries(appData.kh2Daily || {}).sort((a, b) => b[0].localeCompare(a[0]));
+  const entries = Object.entries(store.data.kh2Daily || {}).sort((a, b) => b[0].localeCompare(a[0]));
 
   if (!entries.length) return `<p class="muted">${t("noHistory")}</p>`;
 
@@ -1282,8 +1379,9 @@ function renderKh2History() {
             <button
               type="button"
               class="kh2-history-delete"
-              onclick="deleteKh2HistoryDay('${date}')"
-              title="${currentLang === "vi" ? "Xóa ngày này" : "Delete this day"}"
+              data-action="delete-kh2-day"
+              data-date="${escapeAttr(date)}"
+              title="${runtime.currentLang === "vi" ? "Xóa ngày này" : "Delete this day"}"
             >
               🗑
             </button>
@@ -1295,7 +1393,7 @@ function renderKh2History() {
 }
 
 function renderCalendar() {
-  const items = filterItems(getAllItems())
+  const items = getFilteredItems(getAnalytics().all)
     .filter((i) => i.date)
     .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -1305,7 +1403,7 @@ function renderCalendar() {
     return acc;
   }, {});
 
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero small-hero"><h2>📅 ${t("calendar")}</h2><p>${t("calendarDesc")}</p></div>
       <div class="card">
@@ -1332,25 +1430,25 @@ function renderCalendar() {
         </div>
       </div>
     </div>
-  `;
+  `);
 }
 
 function renderKanban() {
-  const items = filterItems(getAllItems());
+  const items = getFilteredItems(getAnalytics().all);
   const cols = [
-    { key: "Todo", title: "Todo" },
-    { key: "Doing", title: "Doing" },
-    { key: "Quan trọng", title: currentLang === "vi" ? "Quan trọng" : "Important" },
-    { key: "Xong", title: currentLang === "vi" ? "Xong" : "Done" },
+    { key: STATUS.todo, title: "Todo" },
+    { key: STATUS.doing, title: "Doing" },
+    { key: STATUS.important, title: runtime.currentLang === "vi" ? "Quan trọng" : "Important" },
+    { key: STATUS.done, title: runtime.currentLang === "vi" ? "Xong" : "Done" },
   ];
 
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero small-hero"><h2>🧲 ${t("kanban")}</h2><p>${t("kanbanDesc")}</p></div>
       <div class="kanban">
         ${cols
           .map((col) => {
-            const list = items.filter((i) => (i.status || "Todo") === col.key);
+            const list = items.filter((i) => (i.status || STATUS.todo) === col.key);
             return `
               <div class="kanban-col">
                 <h3>${col.title} <span>${list.length}</span></h3>
@@ -1363,7 +1461,7 @@ function renderKanban() {
           .join("")}
       </div>
     </div>
-  `;
+  `);
 }
 
 function renderKanbanCard(item) {
@@ -1372,39 +1470,34 @@ function renderKanbanCard(item) {
       <strong>${escapeHTML(item.name)}</strong>
       <p class="muted">${item.group.toUpperCase()} ${item.date ? "• " + formatDate(item.date) : ""}</p>
       <div class="kanban-actions">
-        <button class="mini-btn" onclick="moveItem('${item.group}', '${item.id}', 'Todo')">Todo</button>
-        <button class="mini-btn" onclick="moveItem('${item.group}', '${item.id}', 'Doing')">Doing</button>
-        <button class="mini-btn" onclick="moveItem('${item.group}', '${item.id}', 'Quan trọng')">🔥</button>
-        <button class="mini-btn" onclick="moveItem('${item.group}', '${item.id}', 'Xong')">✅</button>
+        <button class="mini-btn" data-action="move-item" data-group="${escapeAttr(item.group)}" data-id="${escapeAttr(item.id)}" data-status="Todo">Todo</button>
+        <button class="mini-btn" data-action="move-item" data-group="${escapeAttr(item.group)}" data-id="${escapeAttr(item.id)}" data-status="Doing">Doing</button>
+        <button class="mini-btn" data-action="move-item" data-group="${escapeAttr(item.group)}" data-id="${escapeAttr(item.id)}" data-status="Quan trọng">🔥</button>
+        <button class="mini-btn" data-action="move-item" data-group="${escapeAttr(item.group)}" data-id="${escapeAttr(item.id)}" data-status="Xong">✅</button>
       </div>
     </div>
   `;
 }
 
 function renderInsights() {
-  const all = getAllItems();
-  const s = getKh2Stats();
-  const life = getLifeScore();
-  const groups = getGroupKeys();
+  const { all, kh2, life } = getAnalytics();
 
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero small-hero"><h2>📊 ${t("insights")}</h2><p>${t("insightsDesc")}</p></div>
 
       <div class="grid grid-4">
         ${statCard(t("lifeScore"), `${life.score}/100`, life.label)}
         ${statCard(t("totalItems"), all.length, t("totalSystem"))}
-        ${statCard(t("passDays"), s.passDays, t("passDaysDesc"))}
-        ${statCard(t("fundBalance"), formatMoney(s.balance), "KH2", s.balance < 0 ? "danger-text" : "success-text")}
+        ${statCard(t("passDays"), kh2.passDays, t("passDaysDesc"))}
+        ${statCard(t("fundBalance"), formatMoney(kh2.balance), "KH2", kh2.balance < 0 ? "danger-text" : "success-text")}
       </div>
 
       <div class="grid grid-2">
         <div class="card">
           <h3>${t("groupDistribution")}</h3>
           <div class="list">
-            ${groups
-              .map((key) => renderMiniMetric(t(key), appData[key].length, key.toUpperCase()))
-              .join("")}
+            ${GROUPS.map((key) => renderMiniMetric(t(key), store.data[key].length, key.toUpperCase())).join("")}
           </div>
         </div>
 
@@ -1412,15 +1505,15 @@ function renderInsights() {
           <h3>${t("activityLog")}</h3>
           <div class="list">
             ${
-              appData.activityLog.length
-                ? appData.activityLog
+              store.data.activityLog.length
+                ? store.data.activityLog
                     .slice(0, 24)
                     .map(
                       (log) => `
                         <div class="item">
                           <div>
                             <strong>${escapeHTML(log.action)}</strong>
-                            <p class="muted">${escapeHTML(log.detail)} • ${new Date(log.at).toLocaleString(currentLang === "vi" ? "vi-VN" : "en-US")}</p>
+                            <p class="muted">${escapeHTML(log.detail)} • ${new Date(log.at).toLocaleString(runtime.currentLang === "vi" ? "vi-VN" : "en-US")}</p>
                           </div>
                         </div>
                       `,
@@ -1432,11 +1525,11 @@ function renderInsights() {
         </div>
       </div>
     </div>
-  `;
+  `);
 }
 
 function renderSettings() {
-  dom.content.innerHTML = `
+  setContent(`
     <div class="grid">
       <div class="card hero small-hero"><h2>⚙️ ${t("settings")}</h2><p>${t("toolsDesc")}</p></div>
 
@@ -1444,29 +1537,29 @@ function renderSettings() {
         <div class="card">
           <h3>${t("exportData")}</h3>
           <p class="muted">${t("exportDesc")}</p>
-          <button class="primary-btn" onclick="exportData()">Export JSON</button>
+          <button class="primary-btn" data-action="export-data">Export JSON</button>
         </div>
         <div class="card">
           <h3>${t("importData")}</h3>
           <p class="muted">${t("importDesc")}</p>
-          <button class="primary-btn" onclick="triggerImport()">Import JSON</button>
+          <button class="primary-btn" data-action="import-data">Import JSON</button>
         </div>
         <div class="card">
           <h3>${t("browserNotification")}</h3>
           <p class="muted">${t("notificationDesc")}</p>
-          <button class="primary-btn" onclick="requestNotifications()">${t("enableNotification")}</button>
+          <button class="primary-btn" data-action="request-notifications">${t("enableNotification")}</button>
         </div>
         <div class="card">
           <h3>☁ Firebase</h3>
           <p class="muted">${t("firebaseDesc")}</p>
           <div class="tool-row">
-            <button class="primary-btn" onclick="manualSave()">Save Cloud</button>
-            <button class="ghost-btn" onclick="manualLoad()">Load Cloud</button>
+            <button class="primary-btn" data-action="manual-save">Save Cloud</button>
+            <button class="ghost-btn" data-action="manual-load">Load Cloud</button>
           </div>
         </div>
       </div>
     </div>
-  `;
+  `);
 }
 
 /* =========================================================
@@ -1485,7 +1578,7 @@ function initKh2Form() {
 
   function renderSelected() {
     const date = dateInput.value;
-    const record = appData.kh2Daily[date] || { saved: false, withdraw: 0, note: "" };
+    const record = store.data.kh2Daily[date] || { saved: false, withdraw: 0, note: "" };
 
     savedInput.checked = Boolean(record.saved);
     withdrawInput.value = record.withdraw || "";
@@ -1508,68 +1601,72 @@ function initKh2Form() {
 
   saveBtn.addEventListener("click", () => {
     const date = dateInput.value;
-    if (!date) return showToast(currentLang === "vi" ? "Bạn chưa chọn ngày 😭" : "Choose a date 😭");
+    if (!date) return showToast(runtime.currentLang === "vi" ? "Bạn chưa chọn ngày 😭" : "Choose a date 😭");
 
-    appData.kh2Daily[date] = {
-      saved: savedInput.checked,
-      withdraw: Math.max(0, Number(withdrawInput.value || 0)),
-      note: noteInput.value.trim(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    addActivity(currentLang === "vi" ? "Cập nhật KH2" : "Update KH2", `${t("day")} ${date}`);
-    saveAll();
-    renderKh2();
-    showToast(currentLang === "vi" ? "Đã lưu ngày này ✅" : "Day saved ✅");
+    commit(
+      (data) => {
+        data.kh2Daily[date] = {
+          saved: savedInput.checked,
+          withdraw: Math.max(0, Number(withdrawInput.value || 0)),
+          note: noteInput.value.trim(),
+          updatedAt: new Date().toISOString(),
+        };
+      },
+      {
+        activity: {
+          action: runtime.currentLang === "vi" ? "Cập nhật KH2" : "Update KH2",
+          detail: `${t("day")} ${date}`,
+        },
+        toast: runtime.currentLang === "vi" ? "Đã lưu ngày này ✅" : "Day saved ✅",
+      },
+    );
   });
 
-  deleteBtn.addEventListener("click", () => {
-    const date = dateInput.value;
-    if (!appData.kh2Daily[date]) {
-      return showToast(currentLang === "vi" ? "Ngày này chưa có dữ liệu 😭" : "No data for this day 😭");
-    }
-    if (!confirm(currentLang === "vi" ? "Xóa ngày này?" : "Delete this day?")) return;
-
-    delete appData.kh2Daily[date];
-    addActivity(currentLang === "vi" ? "Xóa dữ liệu KH2" : "Delete KH2 record", `${t("day")} ${date}`);
-    saveAll();
-    renderKh2();
-  });
+  deleteBtn.addEventListener("click", () => deleteKh2HistoryDay(dateInput.value));
 }
 
-function initKh2HeatmapClick() {
-  $$(".heat-cell").forEach((cell) => {
-    cell.addEventListener("click", () => {
-      const date = cell.dataset.date;
-      const dateInput = $("kh2DateInput");
-      if (!date || !dateInput) return;
+function selectKh2Date(date) {
+  const dateInput = $("kh2DateInput");
+  if (!date || !dateInput) return;
 
-      dateInput.value = date;
-      dateInput.dispatchEvent(new Event("change"));
-      dateInput.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => dateInput.focus(), 360);
-      showToast(currentLang === "vi" ? `Đã chọn ngày ${date}` : `Selected ${date}`);
-    });
-  });
+  dateInput.value = date;
+  dateInput.dispatchEvent(new Event("change"));
+  dateInput.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => dateInput.focus(), 320);
+  showToast(runtime.currentLang === "vi" ? `Đã chọn ngày ${date}` : `Selected ${date}`);
 }
 
 function deleteKh2HistoryDay(date) {
-  const ok = confirm(currentLang === "vi" ? `Xóa dữ liệu ngày ${date}?` : `Delete data of ${date}?`);
+  if (!date) return;
+
+  if (!store.data.kh2Daily[date]) {
+    showToast(runtime.currentLang === "vi" ? "Ngày này chưa có dữ liệu 😭" : "No data for this day 😭");
+    return;
+  }
+
+  const ok = confirm(runtime.currentLang === "vi" ? `Xóa dữ liệu ngày ${date}?` : `Delete data of ${date}?`);
   if (!ok) return;
 
-  delete appData.kh2Daily[date];
-  addActivity(currentLang === "vi" ? "Xóa nhanh lịch sử KH2" : "Quick delete KH2 history", `${t("day")} ${date}`);
-  saveAll();
-  renderKh2();
-  showToast(currentLang === "vi" ? `Đã xóa ngày ${date}` : `Deleted ${date}`);
+  commit(
+    (data) => {
+      delete data.kh2Daily[date];
+    },
+    {
+      activity: {
+        action: runtime.currentLang === "vi" ? "Xóa dữ liệu KH2" : "Delete KH2 record",
+        detail: `${t("day")} ${date}`,
+      },
+      toast: runtime.currentLang === "vi" ? `Đã xóa ngày ${date}` : `Deleted ${date}`,
+    },
+  );
 }
 
 /* =========================================================
    CRUD
 ========================================================= */
 
-function openAddModal(type = currentPage === "dashboard" ? "kh1" : currentPage) {
-  if (!getGroupKeys().includes(type)) type = "kh1";
+function openAddModal(type = runtime.currentPage === "dashboard" ? "kh1" : runtime.currentPage) {
+  if (!GROUPS.includes(type)) type = "kh1";
 
   dom.editId.value = "";
   dom.modalMode.textContent = t("modalNew");
@@ -1577,7 +1674,7 @@ function openAddModal(type = currentPage === "dashboard" ? "kh1" : currentPage) 
   dom.planType.value = type;
   dom.planName.value = "";
   dom.planDate.value = "";
-  dom.planStatus.value = "Todo";
+  dom.planStatus.value = STATUS.todo;
   dom.planNote.value = "";
 
   dom.planModal.classList.add("show");
@@ -1585,7 +1682,7 @@ function openAddModal(type = currentPage === "dashboard" ? "kh1" : currentPage) 
 }
 
 function openEditModal(type, id) {
-  const item = appData[type]?.find((x) => x.id === id);
+  const item = store.data[type]?.find((x) => x.id === id);
   if (!item) return;
 
   dom.editId.value = id;
@@ -1594,7 +1691,7 @@ function openEditModal(type, id) {
   dom.planType.value = type;
   dom.planName.value = item.name || "";
   dom.planDate.value = item.date || "";
-  dom.planStatus.value = item.status || "Todo";
+  dom.planStatus.value = item.status || STATUS.todo;
   dom.planNote.value = item.note || "";
 
   dom.planModal.classList.add("show");
@@ -1608,24 +1705,40 @@ function closeModal() {
 }
 
 function deleteItem(type, id) {
-  if (!confirm(currentLang === "vi" ? "Bạn chắc chắn muốn xóa?" : "Delete this item?")) return;
+  if (!GROUPS.includes(type)) return;
+  if (!confirm(runtime.currentLang === "vi" ? "Bạn chắc chắn muốn xóa?" : "Delete this item?")) return;
 
-  const item = appData[type]?.find((x) => x.id === id);
-  appData[type] = appData[type].filter((x) => x.id !== id);
+  const item = store.data[type]?.find((x) => x.id === id);
 
-  addActivity(currentLang === "vi" ? "Xóa kế hoạch" : "Delete plan", `${type.toUpperCase()} • ${item?.name || id}`);
-  saveAll();
-  loadPage(currentPage);
+  commit(
+    (data) => {
+      data[type] = data[type].filter((x) => x.id !== id);
+    },
+    {
+      activity: {
+        action: runtime.currentLang === "vi" ? "Xóa kế hoạch" : "Delete plan",
+        detail: `${type.toUpperCase()} • ${item?.name || id}`,
+      },
+    },
+  );
 }
 
 function moveItem(type, id, status) {
-  appData[type] = appData[type].map((item) =>
-    item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item,
-  );
+  if (!GROUPS.includes(type)) return;
 
-  addActivity(currentLang === "vi" ? "Đổi trạng thái" : "Change status", `${type.toUpperCase()} → ${status}`);
-  saveAll();
-  loadPage(currentPage);
+  commit(
+    (data) => {
+      data[type] = data[type].map((item) =>
+        item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item,
+      );
+    },
+    {
+      activity: {
+        action: runtime.currentLang === "vi" ? "Đổi trạng thái" : "Change status",
+        detail: `${type.toUpperCase()} → ${status}`,
+      },
+    },
+  );
 }
 
 function handlePlanSubmit(event) {
@@ -1635,7 +1748,7 @@ function handlePlanSubmit(event) {
   const id = dom.editId.value;
   const name = dom.planName.value.trim();
 
-  if (!name) return;
+  if (!GROUPS.includes(type) || !name) return;
 
   const now = new Date().toISOString();
   const payload = {
@@ -1647,17 +1760,31 @@ function handlePlanSubmit(event) {
     updatedAt: now,
   };
 
-  if (id) {
-    appData[type] = appData[type].map((item) => (item.id === id ? { ...item, ...payload } : item));
-    addActivity(currentLang === "vi" ? "Sửa kế hoạch" : "Edit plan", `${type.toUpperCase()} • ${name}`);
-  } else {
-    appData[type].push({ ...payload, createdAt: now });
-    addActivity(currentLang === "vi" ? "Thêm kế hoạch" : "Add plan", `${type.toUpperCase()} • ${name}`);
-  }
+  commit(
+    (data) => {
+      if (id) {
+        data[type] = data[type].map((item) => (item.id === id ? { ...item, ...payload } : item));
+      } else {
+        data[type].push({ ...payload, createdAt: now });
+      }
+    },
+    {
+      activity: {
+        action: id
+          ? runtime.currentLang === "vi"
+            ? "Sửa kế hoạch"
+            : "Edit plan"
+          : runtime.currentLang === "vi"
+            ? "Thêm kế hoạch"
+            : "Add plan",
+        detail: `${type.toUpperCase()} • ${name}`,
+      },
+      render: false,
+    },
+  );
 
-  saveAll();
   closeModal();
-  loadPage(currentPage);
+  loadPage(runtime.currentPage);
 }
 
 /* =========================================================
@@ -1666,9 +1793,10 @@ function handlePlanSubmit(event) {
 
 function exportData() {
   const payload = {
-    ...appData,
+    ...store.data,
     exportedAt: new Date().toISOString(),
     app: "PlanOS",
+    schemaVersion: 2,
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -1677,9 +1805,12 @@ function exportData() {
 
   a.href = url;
   a.download = `planos-backup-${today()}.json`;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
 
   URL.revokeObjectURL(url);
+  showToast(t("copiedBackup"));
 }
 
 function triggerImport() {
@@ -1693,11 +1824,14 @@ async function handleImport(event) {
   try {
     const text = await file.text();
     const parsed = JSON.parse(text);
-    appData = normalizeData(parsed);
+    const nextData = normalizeData(parsed);
 
-    addActivity(currentLang === "vi" ? "Import dữ liệu" : "Import data", file.name);
-    saveAll(true);
-    loadPage(currentPage);
+    store.data = nextData;
+    addActivity(runtime.currentLang === "vi" ? "Import dữ liệu" : "Import data", file.name);
+    invalidateAnalytics();
+    saveLocal();
+    saveCloud(true);
+    loadPage(runtime.currentPage);
     showToast(t("importSuccess"));
   } catch (error) {
     console.error("Import error:", error);
@@ -1717,14 +1851,14 @@ function notifyDueItems() {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   const due = getDueItems(1);
-  const kh2Passed = Boolean(appData.kh2Daily?.[today()]?.saved);
+  const kh2Passed = Boolean(store.data.kh2Daily?.[today()]?.saved);
 
-  let body = currentLang === "vi" ? "Không có deadline gấp hôm nay." : "No urgent deadlines today.";
+  let body = runtime.currentLang === "vi" ? "Không có deadline gấp hôm nay." : "No urgent deadlines today.";
 
   if (due.length) {
-    body = currentLang === "vi" ? `Bạn có ${due.length} mục cần chú ý.` : `You have ${due.length} urgent items.`;
+    body = runtime.currentLang === "vi" ? `Bạn có ${due.length} mục cần chú ý.` : `You have ${due.length} urgent items.`;
   } else if (!kh2Passed) {
-    body = currentLang === "vi" ? "KH2 hôm nay chưa PASS." : "KH2 has not passed today.";
+    body = runtime.currentLang === "vi" ? "KH2 hôm nay chưa PASS." : "KH2 has not passed today.";
   }
 
   new Notification("PlanOS", { body });
@@ -1742,52 +1876,79 @@ function manualLoad() {
    ROUTER
 ========================================================= */
 
+const pageRenderers = {
+  dashboard: renderDashboard,
+  calendar: renderCalendar,
+  kanban: renderKanban,
+  insights: renderInsights,
+  settings: renderSettings,
+};
+
 function loadPage(pageName) {
   if (!pageInfo[pageName]) pageName = "dashboard";
 
-  currentPage = pageName;
+  runtime.currentPage = pageName;
   if (dom.pageTitle) dom.pageTitle.textContent = t(pageName);
 
   dom.navItems.forEach((item) => {
     item.classList.toggle("active", item.dataset.page === pageName);
   });
 
-  if (!dom.content) return;
-
-  if (pageName === "dashboard") renderDashboard();
-  else if (pageName === "calendar") renderCalendar();
-  else if (pageName === "kanban") renderKanban();
-  else if (pageName === "insights") renderInsights();
-  else if (pageName === "settings") renderSettings();
-  else renderKhPage(pageName);
-
+  const renderer = pageRenderers[pageName] || (() => renderKhPage(pageName));
+  renderer();
   applyLanguage();
 }
 
 /* =========================================================
-   EVENTS
+   EVENT DELEGATION
 ========================================================= */
+
+function handleDocumentClick(event) {
+  const target = event.target.closest("[data-action]");
+  if (!target) return;
+
+  const { action, group, id, status, date } = target.dataset;
+
+  const actions = {
+    "add-item": () => openAddModal(group),
+    "edit-item": () => openEditModal(group, id),
+    "delete-item": () => deleteItem(group, id),
+    "move-item": () => moveItem(group, id, status),
+    "select-kh2-date": () => selectKh2Date(date),
+    "delete-kh2-day": () => deleteKh2HistoryDay(date),
+    "export-data": () => exportData(),
+    "import-data": () => triggerImport(),
+    "request-notifications": () => requestNotifications(),
+    "manual-save": () => manualSave(),
+    "manual-load": () => manualLoad(),
+  };
+
+  actions[action]?.();
+}
 
 function bindEvents() {
   dom.loginForm?.addEventListener("submit", handleLogin);
   dom.logoutBtn?.addEventListener("click", logout);
+  document.addEventListener("click", handleDocumentClick);
 
   dom.navItems.forEach((item) => {
     item.addEventListener("click", () => loadPage(item.dataset.page));
   });
 
+  const debouncedSearch = debounce((value) => {
+    runtime.searchQuery = value;
+    loadPage(runtime.currentPage);
+  }, CONFIG.searchDelay);
+
   dom.globalSearch?.addEventListener("input", (event) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      searchQuery = event.target.value;
-      loadPage(currentPage);
-    }, SEARCH_DELAY);
+    debouncedSearch(event.target.value);
   });
 
   dom.langBtn?.addEventListener("click", () => {
-    currentLang = currentLang === "vi" ? "en" : "vi";
-    localStorage.setItem(LANG_KEY, currentLang);
-    loadPage(currentPage);
+    runtime.currentLang = runtime.currentLang === "vi" ? "en" : "vi";
+    localStorage.setItem(CONFIG.storage.lang, runtime.currentLang);
+    invalidateAnalytics();
+    loadPage(runtime.currentPage);
     updateRealTimeClock();
   });
 
@@ -1802,19 +1963,7 @@ function bindEvents() {
     if (event.target === dom.planModal) closeModal();
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && dom.planModal?.classList.contains("show")) closeModal();
-
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault();
-      dom.globalSearch?.focus();
-    }
-
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "n") {
-      event.preventDefault();
-      openAddModal();
-    }
-  });
+  document.addEventListener("keydown", handleKeyboardShortcuts);
 
   dom.cloudSaveBtn?.addEventListener("click", () => saveCloud(true));
   dom.cloudLoadBtn?.addEventListener("click", () => loadCloud(true));
@@ -1822,8 +1971,37 @@ function bindEvents() {
 
   window.addEventListener("beforeunload", () => {
     saveLocal();
-    if (saveTimer) clearTimeout(saveTimer);
+    if (runtime.saveTimer) clearTimeout(runtime.saveTimer);
   });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") saveLocal();
+  });
+}
+
+function handleKeyboardShortcuts(event) {
+  if (event.key === "Escape" && dom.planModal?.classList.contains("show")) {
+    closeModal();
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    dom.globalSearch?.focus();
+    dom.globalSearch?.select();
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "n") {
+    event.preventDefault();
+    openAddModal();
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+    event.preventDefault();
+    saveCloud(true);
+  }
 }
 
 /* =========================================================
@@ -1837,13 +2015,13 @@ function updateRealTimeClock() {
 
   const now = new Date();
 
-  clock.textContent = now.toLocaleTimeString(currentLang === "vi" ? "vi-VN" : "en-US", {
+  clock.textContent = now.toLocaleTimeString(runtime.currentLang === "vi" ? "vi-VN" : "en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
 
-  dateEl.textContent = now.toLocaleDateString(currentLang === "vi" ? "vi-VN" : "en-US", {
+  dateEl.textContent = now.toLocaleDateString(runtime.currentLang === "vi" ? "vi-VN" : "en-US", {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -1861,22 +2039,27 @@ async function initApp() {
 
   loadPage("dashboard");
   updateRealTimeClock();
+  runtime.clockTimer = setInterval(updateRealTimeClock, 1000);
 
-  appReady = true;
   setTimeout(notifyDueItems, 1200);
 }
 
-setInterval(updateRealTimeClock, 1000);
+/* =========================================================
+   GLOBAL COMPATIBILITY
+   Keep these because existing inline onclick in old HTML/templates may call them.
+========================================================= */
 
-window.openAddModal = openAddModal;
-window.openEditModal = openEditModal;
-window.deleteItem = deleteItem;
-window.moveItem = moveItem;
-window.exportData = exportData;
-window.triggerImport = triggerImport;
-window.requestNotifications = requestNotifications;
-window.manualSave = manualSave;
-window.manualLoad = manualLoad;
-window.deleteKh2HistoryDay = deleteKh2HistoryDay;
+Object.assign(window, {
+  openAddModal,
+  openEditModal,
+  deleteItem,
+  moveItem,
+  exportData,
+  triggerImport,
+  requestNotifications,
+  manualSave,
+  manualLoad,
+  deleteKh2HistoryDay,
+});
 
 initApp();
