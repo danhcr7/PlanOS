@@ -1533,21 +1533,25 @@ body {
 .loading-screen {
   position: fixed;
   inset: 0;
-  z-index: 999998;
+  width: 100vw;
+  height: 100vh;
+
   display: none;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 999999;
+
   background:
-    radial-gradient(
-      circle at 30% 20%,
-      rgba(139, 92, 246, 0.45),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 75% 70%,
-      rgba(34, 211, 238, 0.35),
-      transparent 34%
-    ),
-    #050716;
+    radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.45), transparent 34%),
+    radial-gradient(circle at 75% 70%, rgba(34, 211, 238, 0.35), transparent 34%),
+    rgba(3, 7, 18, 0.96);
+
+  backdrop-filter: blur(18px);
+}
+
+.loading-screen.show {
+  display: flex;
 }
 
 .loading-screen.show {
@@ -1556,14 +1560,29 @@ body {
 
 .loading-card {
   width: min(430px, calc(100% - 32px));
-  padding: 38px;
+
+  padding: 42px;
+
   border-radius: 34px;
-  border: 1px solid var(--line);
-  background: rgba(10, 16, 36, 0.78);
-  box-shadow: 0 38px 120px rgba(0, 0, 0, 0.52);
+
+  border: 1px solid rgba(255,255,255,0.08);
+
+  background: rgba(10, 16, 36, 0.9);
+
+  box-shadow:
+    0 40px 120px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+
   text-align: center;
-  backdrop-filter: blur(28px) saturate(150%);
-  animation: loadingPop 550ms var(--ease);
+
+  backdrop-filter: blur(28px) saturate(160%);
+
+  animation: loadingPop 0.55s var(--ease);
+}
+
+.loading-card h2,
+.loading-card p {
+  text-align: center;
 }
 
 .loading-logo {
