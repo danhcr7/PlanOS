@@ -2579,3 +2579,19 @@ form {
     transform: scale(1.25);
   }
 }
+.kh1-form {
+  display: grid;
+  gap: 16px;
+}
+
+.kh1-todo-item {
+  align-items: flex-start;
+}
+
+.kh1-todo-item strong {
+  font-size: 17px;
+}
+
+.kh1-todo-item .muted {
+  margin-top: 6px;
+}
