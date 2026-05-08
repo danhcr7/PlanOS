@@ -930,32 +930,104 @@ function getLifeScore(all = getAllItems(), kh2 = getKh2Stats(), counts = {}) {
 }
 
 function getAssistantAdvice() {
-  const { kh2, dueSoon, life } = getAnalytics();
+  const { kh2, dueSoon, life, all, overdue, important } = getAnalytics();
   const todayKh2 = Boolean(store.data.kh2Daily?.[today()]?.saved);
+  const todoCount = all.filter((item) => item.status === STATUS.todo).length;
+  const doingCount = all.filter((item) => item.status === STATUS.doing).length;
+  const doneCount = all.filter((item) => item.status === STATUS.done).length;
 
-  if (runtime.currentLang === "en") {
-    const arr = [
-      `PlanOS Score is ${life.score}/100 — ${life.label}.`,
-      kh2.balance < 0
-        ? `KH2 is negative by ${formatMoney(Math.abs(kh2.balance))}. Prioritize refunding the fund.`
-        : `KH2 is positive by ${formatMoney(kh2.balance)}. Financial status looks stable.`,
-    ];
-    if (!todayKh2) arr.push("KH2 has not passed today yet.");
-    if (dueSoon.length) arr.push(`${dueSoon.length} items are due soon.`);
-    if (kh2.currentStreak) arr.push(`Current KH2 streak: ${kh2.currentStreak} days.`);
-    return arr;
+  const advice = [];
+
+  if (runtime.currentLang === "vi") {
+    advice.push({
+      type: life.score >= 70 ? "good" : life.score >= 50 ? "warning" : "danger",
+      title: `PlanOS Score: ${life.score}/100`,
+      body:
+        life.score >= 85
+          ? "Hệ thống đang rất ổn. Bạn có thể tiếp tục duy trì nhịp hiện tại."
+          : life.score >= 70
+            ? "Tình trạng tổng thể ổn định. Nên xử lý dần các mục quan trọng."
+            : life.score >= 50
+              ? "Hệ thống đang cần chú ý. Hãy ưu tiên deadline và KH2 hôm nay."
+              : "PlanOS đang ở trạng thái căng. Nên xử lý việc quá hạn trước.",
+      action:
+        overdue > 0
+          ? `Xử lý ${overdue} mục quá hạn`
+          : important > 0
+            ? `Xử lý ${important} mục quan trọng`
+            : "Duy trì tiến độ hiện tại",
+    });
+
+    if (!todayKh2) {
+      advice.push({
+        type: "warning",
+        title: "KH2 hôm nay chưa PASS",
+        body: "Bạn chưa đánh dấu thêm 15.000đ hôm nay. Nếu đã hoàn thành, hãy cập nhật để giữ streak.",
+        action: "Mở KH2 và tick PASS hôm nay",
+      });
+    } else {
+      advice.push({
+        type: "good",
+        title: `KH2 streak: ${kh2.currentStreak} ngày`,
+        body: `Bạn đang duy trì chuỗi tiết kiệm tốt. Best streak hiện tại là ${kh2.bestStreak} ngày.`,
+        action: "Tiếp tục giữ streak",
+      });
+    }
+
+    if (kh2.balance < 0) {
+      advice.push({
+        type: "danger",
+        title: `KH2 đang âm ${formatMoney(Math.abs(kh2.balance))}`,
+        body: "Quỹ tiết kiệm đang bị rút nhiều hơn số đã thêm. Nên bù lại để hệ thống tài chính ổn định.",
+        action: "Ưu tiên bù quỹ KH2",
+      });
+    } else {
+      advice.push({
+        type: "good",
+        title: `KH2 đang dương ${formatMoney(kh2.balance)}`,
+        body: "Tình hình tài chính hiện tại ổn. Bạn có thể tiếp tục duy trì mức tiết kiệm hằng ngày.",
+        action: "Duy trì 15.000đ/ngày",
+      });
+    }
+
+    if (dueSoon.length) {
+      advice.push({
+        type: "warning",
+        title: `${dueSoon.length} mục gần hạn`,
+        body: "Có một số việc cần chú ý trong 3 ngày tới. Nên xử lý trước các mục có deadline gần nhất.",
+        action: "Mở Today Focus",
+      });
+    }
+
+    advice.push({
+      type: "info",
+      title: "Tóm tắt workflow",
+      body: `Hiện có ${todoCount} Todo, ${doingCount} Doing và ${doneCount} mục đã xong.`,
+      action: doingCount > 3 ? "Giảm bớt việc đang làm" : "Workflow đang kiểm soát được",
+    });
+
+    return advice.slice(0, 5);
   }
 
-  const arr = [
-    `PlanOS Score hiện tại là ${life.score}/100 — ${life.label}.`,
-    kh2.balance < 0
-      ? `KH2 đang âm ${formatMoney(Math.abs(kh2.balance))}, nên ưu tiên bù quỹ.`
-      : `KH2 đang dương ${formatMoney(kh2.balance)}, tình hình tài chính ổn.`,
+  return [
+    {
+      type: life.score >= 70 ? "good" : life.score >= 50 ? "warning" : "danger",
+      title: `PlanOS Score: ${life.score}/100`,
+      body:
+        life.score >= 70
+          ? "Your system is stable. Keep the current rhythm."
+          : "Your system needs attention. Prioritize deadlines and KH2 today.",
+      action: overdue > 0 ? `Resolve ${overdue} overdue items` : "Keep momentum",
+    },
+    {
+      type: todayKh2 ? "good" : "warning",
+      title: todayKh2 ? `KH2 streak: ${kh2.currentStreak} days` : "KH2 has not passed today",
+      body: todayKh2
+        ? `Best streak is ${kh2.bestStreak} days.`
+        : "Update KH2 today to keep your streak alive.",
+      action: todayKh2 ? "Keep the streak" : "Open KH2 and mark PASS",
+    },
   ];
-  if (!todayKh2) arr.push("KH2 hôm nay chưa PASS, nên cập nhật trước khi kết thúc ngày.");
-  if (dueSoon.length) arr.push(`Có ${dueSoon.length} mục gần hạn, nên xử lý trước.`);
-  if (kh2.currentStreak) arr.push(`Bạn đang giữ streak KH2 ${kh2.currentStreak} ngày.`);
-  return arr;
 }
 
 /* =========================================================
@@ -1079,7 +1151,28 @@ function renderMiniMetric(label, value, detail = "") {
     </div>
   `;
 }
+function renderAssistantCard(item) {
+  const iconMap = {
+  good: "✅",
+  warning: "⚠️",
+  danger: "🚨",
+  info: "💡",
+};
 
+  return `
+    <div class="assistant-card assistant-${escapeAttr(item.type)}">
+      <div class="assistant-icon">
+  ${iconMap[item.type] || "💡"}
+</div>
+
+      <div class="assistant-content">
+        <strong>${escapeHTML(item.title)}</strong>
+        <p>${escapeHTML(item.body)}</p>
+        <span>${escapeHTML(item.action)}</span>
+      </div>
+    </div>
+  `;
+}
 function renderItem(item) {
   const group = item.group || runtime.currentPage;
   const left = item.date ? daysBetween(item.date) : null;
@@ -1117,104 +1210,315 @@ function renderItem(item) {
 
 function renderDashboard() {
   const analytics = getAnalytics();
+
   const allItems = getFilteredItems(analytics.all);
-  const done = allItems.filter((i) => i.status === STATUS.done).length;
-  const important = allItems.filter((i) => i.status === STATUS.important).length;
+
+  const done = allItems.filter(
+    (i) => i.status === STATUS.done
+  ).length;
+
+  const important = allItems.filter(
+    (i) => i.status === STATUS.important
+  ).length;
+
   const advice = getAssistantAdvice();
-  const kh2Today = Boolean(store.data.kh2Daily?.[today()]?.saved);
+
+  const kh2Today = Boolean(
+    store.data.kh2Daily?.[today()]?.saved
+  );
 
   setContent(`
     <div class="grid">
+
       <div class="card hero">
         <p class="eyebrow">${t("commandHint")}</p>
+
         <h2>${t("heroTitle")}</h2>
+
         <p>${t("heroDesc")}</p>
       </div>
 
       <div class="grid grid-2">
+
         <div class="card">
           <div class="section-head">
+
             <div>
               <h3>${t("lifeScore")}</h3>
-              <p class="muted">${t("lifeScoreDesc")}</p>
+
+              <p class="muted">
+                ${t("lifeScoreDesc")}
+              </p>
             </div>
+
             ${renderScoreRing(analytics.life.score)}
+
           </div>
+
           <div class="list">
-            ${renderMiniMetric(t("systemHealth"), analytics.life.label, `${analytics.life.overdue} ${t("overdueItems")} • ${analytics.life.important} ${t("important")}`)}
-            ${renderMiniMetric(t("kh2Today"), kh2Today ? t("passedToday") : t("notPassedToday"), `${t("currentStreak")}: ${analytics.kh2.currentStreak} ${t("days")}`)}
+
+            ${renderMiniMetric(
+              t("systemHealth"),
+              analytics.life.label,
+              `${analytics.life.overdue} ${t("overdueItems")} • ${analytics.life.important} ${t("important")}`
+            )}
+
+            ${renderMiniMetric(
+              t("kh2Today"),
+              kh2Today
+                ? t("passedToday")
+                : t("notPassedToday"),
+              `${t("currentStreak")}: ${analytics.kh2.currentStreak} ${t("days")}`
+            )}
+
           </div>
         </div>
 
         <div class="card">
           <div class="section-head">
+
             <div>
               <h3>${t("todayFocus")}</h3>
-              <p class="muted">${t("todayFocusDesc")}</p>
+
+              <p class="muted">
+                ${t("todayFocusDesc")}
+              </p>
             </div>
-            <button class="primary-btn" data-action="add-item" data-group="kh1">${t("addPlan")}</button>
+
+            <button
+              class="primary-btn"
+              data-action="add-item"
+              data-group="kh1"
+            >
+              ${t("addPlan")}
+            </button>
+
           </div>
+
           <div class="list">
-            ${analytics.todayFocus.length ? analytics.todayFocus.map(renderItem).join("") : `<p class="muted">${t("noTodayFocus")}</p>`}
+
+            ${
+              analytics.todayFocus.length
+                ? analytics.todayFocus
+                    .map(renderItem)
+                    .join("")
+                : `<p class="muted">${t("noTodayFocus")}</p>`
+            }
+
           </div>
         </div>
+
       </div>
 
       <div class="grid grid-4">
-        ${statCard(t("totalItems"), allItems.length, t("totalSystem"))}
-        ${statCard(t("completed"), done, t("completedDesc"))}
-        ${statCard(t("important"), important, t("importantDesc"))}
-        ${statCard(t("kh2Balance"), formatMoney(analytics.kh2.balance), t("balanceDesc"), analytics.kh2.balance < 0 ? "danger-text" : "success-text")}
+
+        ${statCard(
+          t("totalItems"),
+          allItems.length,
+          t("totalSystem")
+        )}
+
+        ${statCard(
+          t("completed"),
+          done,
+          t("completedDesc")
+        )}
+
+        ${statCard(
+          t("important"),
+          important,
+          t("importantDesc")
+        )}
+
+        ${statCard(
+          t("kh2Balance"),
+          formatMoney(analytics.kh2.balance),
+          t("balanceDesc"),
+          analytics.kh2.balance < 0
+            ? "danger-text"
+            : "success-text"
+        )}
+
       </div>
 
       <div class="grid grid-4">
-        ${statCard(t("currentStreak"), analytics.kh2.currentStreak, "KH2")}
-        ${statCard(t("bestStreak"), analytics.kh2.bestStreak, "KH2")}
-        ${statCard(t("passRate"), `${analytics.kh2.passRate60}%`, "KH2")}
-        ${statCard(t("fundBalance"), formatMoney(analytics.kh2.balance), t("balanceDesc"), analytics.kh2.balance < 0 ? "danger-text" : "success-text")}
+
+        ${statCard(
+          t("currentStreak"),
+          analytics.kh2.currentStreak,
+          "KH2"
+        )}
+
+        ${statCard(
+          t("bestStreak"),
+          analytics.kh2.bestStreak,
+          "KH2"
+        )}
+
+        ${statCard(
+          t("passRate"),
+          `${analytics.kh2.passRate60}%`,
+          "KH2"
+        )}
+
+        ${statCard(
+          t("fundBalance"),
+          formatMoney(analytics.kh2.balance),
+          t("balanceDesc"),
+          analytics.kh2.balance < 0
+            ? "danger-text"
+            : "success-text"
+        )}
+
       </div>
 
       <div class="grid grid-2">
-        <div class="card">
-          <h3>${t("assistant")}</h3>
-          <div class="list">
-            ${advice.map((x) => `<div class="mini-note">${escapeHTML(x)}</div>`).join("")}
-          </div>
-        </div>
 
+        <!-- AI ASSISTANT -->
         <div class="card">
-          <h3>${t("weeklyReview")}</h3>
-          <p class="muted">${t("weeklyReviewDesc")}</p>
-          <div class="list">
-            ${renderMiniMetric(t("completedThisWeek"), analytics.weekly.completedThisWeek)}
-            ${renderMiniMetric(t("addedThisWeek"), analytics.weekly.addedThisWeek)}
-            ${renderMiniMetric(t("savedThisWeek"), `${analytics.weekly.savedThisWeek}/7`)}
-          </div>
-        </div>
-      </div>
 
-      <div class="grid grid-2">
-        <div class="card">
-          <h3>${t("dueTitle")}</h3>
-          <div class="list">
-            ${analytics.dueSoon.length ? analytics.dueSoon.slice(0, 6).map(renderItem).join("") : `<p class="muted">${t("noDue")}</p>`}
-          </div>
-        </div>
-
-        <div class="card">
           <div class="section-head">
             <div>
-              <h3>${t("recentPlans")}</h3>
-              <p class="muted">${t("recentPlansDesc")}</p>
+              <h3>${t("assistant")}</h3>
+
+              <p class="muted">
+                AI Operating System Assistant
+              </p>
             </div>
+
+            <span class="badge blue">
+              PLANOS AI
+            </span>
           </div>
-          <div class="list">
-            ${allItems.length ? allItems.slice(-8).reverse().map(renderItem).join("") : `<p class="muted">${t("emptyPlans")}</p>`}
+
+          <div class="list assistant-list">
+
+            ${advice
+              .map(renderAssistantCard)
+              .join("")}
+
           </div>
+
         </div>
+
+        <!-- WEEKLY REVIEW -->
+        <div class="card">
+
+          <div class="section-head">
+            <div>
+              <h3>${t("weeklyReview")}</h3>
+
+              <p class="muted">
+                ${t("weeklyReviewDesc")}
+              </p>
+            </div>
+
+            <span class="badge green">
+              WEEKLY
+            </span>
+          </div>
+
+          <div class="list">
+
+            ${renderMiniMetric(
+              t("completedThisWeek"),
+              analytics.weekly.completedThisWeek
+            )}
+
+            ${renderMiniMetric(
+              t("addedThisWeek"),
+              analytics.weekly.addedThisWeek
+            )}
+
+            ${renderMiniMetric(
+              t("savedThisWeek"),
+              `${analytics.weekly.savedThisWeek}/7`
+            )}
+
+          </div>
+
+        </div>
+
       </div>
+
+      <div class="grid grid-2">
+
+        <!-- DEADLINES -->
+        <div class="card">
+
+          <div class="section-head">
+            <div>
+              <h3>${t("dueTitle")}</h3>
+
+              <p class="muted">
+                Upcoming deadlines & urgent tasks
+              </p>
+            </div>
+
+            <span class="badge yellow">
+              DEADLINES
+            </span>
+          </div>
+
+          <div class="list">
+
+            ${
+              analytics.dueSoon.length
+                ? analytics.dueSoon
+                    .slice(0, 6)
+                    .map(renderItem)
+                    .join("")
+                : `<p class="muted">${t("noDue")}</p>`
+            }
+
+          </div>
+
+        </div>
+
+        <!-- RECENT -->
+        <div class="card">
+
+          <div class="section-head">
+
+            <div>
+              <h3>${t("recentPlans")}</h3>
+
+              <p class="muted">
+                ${t("recentPlansDesc")}
+              </p>
+            </div>
+
+            <span class="badge blue">
+              RECENT
+            </span>
+
+          </div>
+
+          <div class="list">
+
+            ${
+              allItems.length
+                ? allItems
+                    .slice(-8)
+                    .reverse()
+                    .map(renderItem)
+                    .join("")
+                : `<p class="muted">${t("emptyPlans")}</p>`
+            }
+
+          </div>
+
+        </div>
+
+      </div>
+
     </div>
   `);
+
+  /* IMPORTANT */
+  if (window.lucide) {
+    lucide.createIcons();
+  }
 }
 
 function renderKhPage(key) {
