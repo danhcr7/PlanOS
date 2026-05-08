@@ -710,8 +710,6 @@ form {
   transform: translateY(0) scale(1);
 }
 
-
-
 /* =========================================================
    RESPONSIVE PRO MAX
    Desktop → Laptop → Tablet → Mobile → Tiny
@@ -1455,3 +1453,19 @@ body {
   }
 }
 
+
+.heat-cell {
+  cursor: pointer;
+  appearance: none;
+}
+
+.heat-cell:hover {
+  transform: translateY(-3px) scale(1.04);
+  border-color: var(--primary-2);
+  box-shadow: 0 10px 24px rgba(34, 211, 238, 0.22);
+}
+
+.heat-cell:focus-visible {
+  outline: 3px solid rgba(34, 211, 238, 0.45);
+  outline-offset: 3px;
+}

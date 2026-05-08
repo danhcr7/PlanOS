@@ -764,11 +764,43 @@ function renderKh2Heatmap() {
     if (record?.saved) cls = "heat-cell pass-cell";
     if (record && !record.saved) cls = "heat-cell fail-cell";
 
-    cells.push(`<span class="${cls}" title="${key}"></span>`);
+    cells.push(`
+      <button
+        type="button"
+        class="${cls}"
+        title="${key}"
+        onclick="selectKh2DateFromHeatmap('${key}')"
+      ></button>
+    `);
   }
 
   return cells.join("");
 }
+
+
+function selectKh2DateFromHeatmap(date) {
+  const dateInput = $("kh2DateInput");
+
+  if (!dateInput) return;
+
+  dateInput.value = date;
+  dateInput.dispatchEvent(new Event("change"));
+
+  dateInput.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+  dateInput.focus();
+
+  showToast(
+    currentLang === "vi"
+      ? `Đã chọn ngày ${date}`
+      : `Selected ${date}`
+  );
+}
+
+window.selectKh2DateFromHeatmap = selectKh2DateFromHeatmap;
 
 function renderKh2History() {
   const entries = Object.entries(appData.kh2Daily || {}).sort((a, b) =>
