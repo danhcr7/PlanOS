@@ -805,25 +805,72 @@ window.selectKh2DateFromHeatmap = selectKh2DateFromHeatmap;
 
 function renderKh2History() {
   const entries = Object.entries(appData.kh2Daily || {}).sort((a, b) =>
-    b[0].localeCompare(a[0]),
+    b[0].localeCompare(a[0])
   );
 
-  if (!entries.length) return `<p class="muted">${t("noHistory")}</p>`;
+  if (!entries.length) {
+    return `<p class="muted">${t("noHistory")}</p>`;
+  }
 
   return entries
     .map(
       ([date, r]) => `
-    <div class="item">
-      <div>
-        <strong>${escapeHTML(date)}</strong>
-        <p class="muted">${t("withdrawn")}: ${formatMoney(r.withdraw || 0)} ${r.note ? "• " + escapeHTML(r.note) : ""}</p>
-      </div>
-      <span class="badge ${r.saved ? "green" : "red"}">${r.saved ? t("pass") : t("notPass")}</span>
-    </div>
-  `,
+        <div class="item">
+          <div>
+            <strong>${escapeHTML(date)}</strong>
+            <p class="muted">
+              ${t("withdrawn")}: ${formatMoney(r.withdraw || 0)}
+              ${r.note ? "• " + escapeHTML(r.note) : ""}
+            </p>
+          </div>
+
+          <div class="kh2-history-actions">
+            <span class="badge ${r.saved ? "green" : "red"}">
+              ${r.saved ? t("pass") : t("notPass")}
+            </span>
+
+            <button
+              type="button"
+              class="kh2-history-delete"
+              onclick="deleteKh2HistoryDay('${date}')"
+              title="${currentLang === "vi" ? "Xóa ngày này" : "Delete this day"}"
+            >
+              🗑
+            </button>
+          </div>
+        </div>
+      `
     )
     .join("");
 }
+
+function deleteKh2HistoryDay(date) {
+  const ok = confirm(
+    currentLang === "vi"
+      ? `Xóa dữ liệu ngày ${date}?`
+      : `Delete data of ${date}?`
+  );
+
+  if (!ok) return;
+
+  delete appData.kh2Daily[date];
+
+  addActivity(
+    currentLang === "vi" ? "Xóa nhanh lịch sử KH2" : "Quick delete KH2 history",
+    `${t("day")} ${date}`
+  );
+
+  saveAll();
+  renderKh2();
+
+  showToast(
+    currentLang === "vi"
+      ? `Đã xóa ngày ${date}`
+      : `Deleted ${date}`
+  );
+}
+
+window.deleteKh2HistoryDay = deleteKh2HistoryDay;
 
 function renderCalendar() {
   const items = filterItems(getAllItems())
