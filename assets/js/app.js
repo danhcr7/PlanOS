@@ -616,16 +616,24 @@ function checkLogin() {
 loginForm?.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  if (
-    loginUsername.value.trim() === LOGIN_USERNAME &&
-    loginPassword.value.trim() === LOGIN_PASSWORD
-  ) {
-    sessionStorage.setItem(LOGIN_KEY, "true");
+  if (loginUsername.value.trim() === LOGIN_USERNAME && loginPassword.value.trim() === LOGIN_PASSWORD) {
+  sessionStorage.setItem(LOGIN_KEY, "true");
+  loginError.classList.remove("show");
+
+  loginScreen.classList.add("login-out");
+
+  setTimeout(() => {
     loginScreen.classList.add("hide");
-    loginError.classList.remove("show");
+    $("loadingScreen")?.classList.add("show");
+  }, 450);
+
+  setTimeout(() => {
+    $("loadingScreen")?.classList.remove("show");
     showToast(t("loginSuccess"));
-    return;
-  }
+  }, 3450);
+
+  return;
+}
 
   loginError.classList.add("show");
   loginPassword.value = "";
