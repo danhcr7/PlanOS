@@ -1513,3 +1513,20 @@ body {
     justify-content: space-between;
   }
 }
+
+
+.clock-box {
+  display: grid;
+  gap: 6px;
+}
+
+#realTimeClock {
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+
+#realTimeDate {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}

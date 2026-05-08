@@ -1339,10 +1339,7 @@ function loadPage(pageName) {
     item.classList.toggle("active", item.dataset.page === pageName);
   });
 
-  if (sideStatus) {
-    const s = getKh2Stats();
-    sideStatus.textContent = s.balance < 0 ? t("sideWarning") : t("sideOk");
-  }
+ 
 
   if (pageName === "dashboard") renderDashboard();
   else if (pageName === "calendar") renderCalendar();
@@ -1414,6 +1411,7 @@ async function initApp() {
   if (!loaded) saveLocal();
 
   loadPage("dashboard");
+  updateRealTimeClock();
 
   setTimeout(notifyDueItems, 1200);
 }
@@ -1425,4 +1423,32 @@ window.addEventListener("beforeunload", () => {
   }
 });
 
+
+
+function updateRealTimeClock() {
+  const clock = $("realTimeClock");
+  const dateEl = $("realTimeDate");
+
+  if (!clock || !dateEl) return;
+
+  const now = new Date();
+
+  clock.textContent = now.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+
+  dateEl.textContent = now.toLocaleDateString(
+    currentLang === "vi" ? "vi-VN" : "en-US",
+    {
+      weekday: "long",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }
+  );
+}
+
+setInterval(updateRealTimeClock, 1000);
 initApp();
