@@ -928,10 +928,43 @@ function getLifeScore(all = getAllItems(), kh2 = getKh2Stats(), counts = {}) {
 
   return { score, label, overdue, important };
 }
+function getPriorityTask() {
+  const items = getAnalytics().all
+    .filter((item) => item.status !== STATUS.done)
+    .map((item) => ({
+      ...item,
+      daysLeft: item.date ? daysBetween(item.date) : null,
+    }));
 
+  if (!items.length) return null;
+
+  return items
+    .map((item) => {
+      let score = 0;
+
+      if (item.daysLeft !== null && item.daysLeft < 0) score += 100;
+      else if (item.daysLeft === 0) score += 80;
+      else if (item.daysLeft === 1) score += 60;
+      else if (item.daysLeft !== null && item.daysLeft <= 3) score += 40;
+
+      if (item.status === STATUS.important) score += 50;
+      if (item.status === STATUS.doing) score += 20;
+      if (!item.date) score -= 10;
+
+      return {
+        ...item,
+        priorityScore: score,
+      };
+    })
+    .sort((a, b) => b.priorityScore - a.priorityScore)[0];
+}
 function getAssistantAdvice() {
+  const priorityTask = getPriorityTask();
+
   const { kh2, dueSoon, life, all, overdue, important } = getAnalytics();
+
   const todayKh2 = Boolean(store.data.kh2Daily?.[today()]?.saved);
+
   const todoCount = all.filter((item) => item.status === STATUS.todo).length;
   const doingCount = all.filter((item) => item.status === STATUS.doing).length;
   const doneCount = all.filter((item) => item.status === STATUS.done).length;
@@ -957,6 +990,34 @@ function getAssistantAdvice() {
             ? `Xử lý ${important} mục quan trọng`
             : "Duy trì tiến độ hiện tại",
     });
+
+    if (priorityTask) {
+      advice.push({
+        type:
+          priorityTask.daysLeft !== null && priorityTask.daysLeft < 0
+            ? "danger"
+            : priorityTask.status === STATUS.important
+              ? "warning"
+              : "info",
+
+        title: "Ưu tiên số 1 hôm nay",
+
+        body: `${priorityTask.name}${
+          priorityTask.date
+            ? ` • Deadline: ${formatDate(priorityTask.date)}`
+            : ""
+        }`,
+
+        action:
+          priorityTask.daysLeft !== null && priorityTask.daysLeft < 0
+            ? "Xử lý ngay vì đã quá hạn"
+            : priorityTask.daysLeft === 0
+              ? "Hoàn thành trong hôm nay"
+              : priorityTask.status === STATUS.important
+                ? "Ưu tiên trước các việc khác"
+                : "Đưa vào Today Focus",
+      });
+    }
 
     if (!todayKh2) {
       advice.push({
@@ -1003,13 +1064,44 @@ function getAssistantAdvice() {
       type: "info",
       title: "Tóm tắt workflow",
       body: `Hiện có ${todoCount} Todo, ${doingCount} Doing và ${doneCount} mục đã xong.`,
-      action: doingCount > 3 ? "Giảm bớt việc đang làm" : "Workflow đang kiểm soát được",
+      action:
+        doingCount > 3
+          ? "Giảm bớt việc đang làm"
+          : "Workflow đang kiểm soát được",
     });
 
-    return advice.slice(0, 5);
+    return advice.slice(0, 6);
   }
 
-  return [
+  if (priorityTask) {
+    advice.push({
+      type:
+        priorityTask.daysLeft !== null && priorityTask.daysLeft < 0
+          ? "danger"
+          : priorityTask.status === STATUS.important
+            ? "warning"
+            : "info",
+
+      title: "Top priority today",
+
+      body: `${priorityTask.name}${
+        priorityTask.date
+          ? ` • Deadline: ${formatDate(priorityTask.date)}`
+          : ""
+      }`,
+
+      action:
+        priorityTask.daysLeft !== null && priorityTask.daysLeft < 0
+          ? "Handle immediately"
+          : priorityTask.daysLeft === 0
+            ? "Finish today"
+            : priorityTask.status === STATUS.important
+              ? "Prioritize this first"
+              : "Move into Today Focus",
+    });
+  }
+
+  advice.push(
     {
       type: life.score >= 70 ? "good" : life.score >= 50 ? "warning" : "danger",
       title: `PlanOS Score: ${life.score}/100`,
@@ -1017,17 +1109,33 @@ function getAssistantAdvice() {
         life.score >= 70
           ? "Your system is stable. Keep the current rhythm."
           : "Your system needs attention. Prioritize deadlines and KH2 today.",
-      action: overdue > 0 ? `Resolve ${overdue} overdue items` : "Keep momentum",
+      action:
+        overdue > 0
+          ? `Resolve ${overdue} overdue items`
+          : "Keep momentum",
     },
     {
       type: todayKh2 ? "good" : "warning",
-      title: todayKh2 ? `KH2 streak: ${kh2.currentStreak} days` : "KH2 has not passed today",
+      title: todayKh2
+        ? `KH2 streak: ${kh2.currentStreak} days`
+        : "KH2 has not passed today",
       body: todayKh2
         ? `Best streak is ${kh2.bestStreak} days.`
         : "Update KH2 today to keep your streak alive.",
       action: todayKh2 ? "Keep the streak" : "Open KH2 and mark PASS",
     },
-  ];
+    {
+      type: "info",
+      title: "Workflow summary",
+      body: `${todoCount} Todo, ${doingCount} Doing and ${doneCount} completed items.`,
+      action:
+        doingCount > 3
+          ? "Reduce active work"
+          : "Workflow is under control",
+    }
+  );
+
+  return advice.slice(0, 6);
 }
 
 /* =========================================================
