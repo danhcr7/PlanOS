@@ -17,7 +17,6 @@ let pendingCloudSave = false;
 let lastSaveAt = 0;
 const SAVE_DELAY = 450;
 
-
 const defaultData = {
   kh1: [],
   kh2: [],
@@ -415,7 +414,7 @@ async function saveCloud(showMessage = false) {
     const payload = {
       ...appData,
       savedAt: new Date().toISOString(),
-      version: Date.now()
+      version: Date.now(),
     };
 
     await saveDataToCloud(payload);
@@ -616,24 +615,27 @@ function checkLogin() {
 loginForm?.addEventListener("submit", (e) => {
   e.preventDefault();
 
-  if (loginUsername.value.trim() === LOGIN_USERNAME && loginPassword.value.trim() === LOGIN_PASSWORD) {
-  sessionStorage.setItem(LOGIN_KEY, "true");
-  loginError.classList.remove("show");
+  if (
+    loginUsername.value.trim() === LOGIN_USERNAME &&
+    loginPassword.value.trim() === LOGIN_PASSWORD
+  ) {
+    sessionStorage.setItem(LOGIN_KEY, "true");
+    loginError.classList.remove("show");
 
-  loginScreen.classList.add("login-out");
+    loginScreen.classList.add("login-out");
 
-  setTimeout(() => {
-    loginScreen.classList.add("hide");
-    $("loadingScreen")?.classList.add("show");
-  }, 450);
+    setTimeout(() => {
+      loginScreen.classList.add("hide");
+      $("loadingScreen")?.classList.add("show");
+    }, 450);
 
-  setTimeout(() => {
-    $("loadingScreen")?.classList.remove("show");
-    showToast(t("loginSuccess"));
-  }, 3450);
+    setTimeout(() => {
+      $("loadingScreen")?.classList.remove("show");
+      showToast(t("loginSuccess"));
+    }, 3450);
 
-  return;
-}
+    return;
+  }
 
   loginError.classList.add("show");
   loginPassword.value = "";
@@ -817,7 +819,6 @@ function renderKh2Heatmap() {
   return cells.join("");
 }
 
-
 function selectKh2DateFromHeatmap(date) {
   const dateInput = $("kh2DateInput");
 
@@ -828,23 +829,19 @@ function selectKh2DateFromHeatmap(date) {
 
   dateInput.scrollIntoView({
     behavior: "smooth",
-    block: "center"
+    block: "center",
   });
 
   dateInput.focus();
 
-  showToast(
-    currentLang === "vi"
-      ? `Đã chọn ngày ${date}`
-      : `Selected ${date}`
-  );
+  showToast(currentLang === "vi" ? `Đã chọn ngày ${date}` : `Selected ${date}`);
 }
 
 window.selectKh2DateFromHeatmap = selectKh2DateFromHeatmap;
 
 function renderKh2History() {
   const entries = Object.entries(appData.kh2Daily || {}).sort((a, b) =>
-    b[0].localeCompare(a[0])
+    b[0].localeCompare(a[0]),
   );
 
   if (!entries.length) {
@@ -878,7 +875,7 @@ function renderKh2History() {
             </button>
           </div>
         </div>
-      `
+      `,
     )
     .join("");
 }
@@ -887,7 +884,7 @@ function deleteKh2HistoryDay(date) {
   const ok = confirm(
     currentLang === "vi"
       ? `Xóa dữ liệu ngày ${date}?`
-      : `Delete data of ${date}?`
+      : `Delete data of ${date}?`,
   );
 
   if (!ok) return;
@@ -896,17 +893,13 @@ function deleteKh2HistoryDay(date) {
 
   addActivity(
     currentLang === "vi" ? "Xóa nhanh lịch sử KH2" : "Quick delete KH2 history",
-    `${t("day")} ${date}`
+    `${t("day")} ${date}`,
   );
 
   saveAll();
   renderKh2();
 
-  showToast(
-    currentLang === "vi"
-      ? `Đã xóa ngày ${date}`
-      : `Deleted ${date}`
-  );
+  showToast(currentLang === "vi" ? `Đã xóa ngày ${date}` : `Deleted ${date}`);
 }
 
 window.deleteKh2HistoryDay = deleteKh2HistoryDay;
@@ -1109,7 +1102,7 @@ function initKh2HeatmapClick() {
 
       dateInput.scrollIntoView({
         behavior: "smooth",
-        block: "center"
+        block: "center",
       });
 
       setTimeout(() => {
@@ -1117,9 +1110,7 @@ function initKh2HeatmapClick() {
       }, 400);
 
       showToast(
-        currentLang === "vi"
-          ? `Đã chọn ngày ${date}`
-          : `Selected ${date}`
+        currentLang === "vi" ? `Đã chọn ngày ${date}` : `Selected ${date}`,
       );
     });
   });
@@ -1347,8 +1338,6 @@ function loadPage(pageName) {
     item.classList.toggle("active", item.dataset.page === pageName);
   });
 
- 
-
   if (pageName === "dashboard") renderDashboard();
   else if (pageName === "calendar") renderCalendar();
   else if (pageName === "kanban") renderKanban();
@@ -1431,8 +1420,6 @@ window.addEventListener("beforeunload", () => {
   }
 });
 
-
-
 function updateRealTimeClock() {
   const clock = $("realTimeClock");
   const dateEl = $("realTimeDate");
@@ -1444,7 +1431,7 @@ function updateRealTimeClock() {
   clock.textContent = now.toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit"
+    second: "2-digit",
   });
 
   dateEl.textContent = now.toLocaleDateString(
@@ -1453,8 +1440,8 @@ function updateRealTimeClock() {
       weekday: "long",
       day: "2-digit",
       month: "2-digit",
-      year: "numeric"
-    }
+      year: "numeric",
+    },
   );
 }
 

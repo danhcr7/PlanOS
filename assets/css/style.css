@@ -1453,7 +1453,6 @@ body {
   }
 }
 
-
 .heat-cell {
   cursor: pointer;
   appearance: none;
@@ -1470,8 +1469,6 @@ body {
   outline-offset: 3px;
 }
 
-
-
 .heat-cell {
   cursor: pointer;
   border: 1px solid var(--line);
@@ -1482,7 +1479,6 @@ body {
   border-color: var(--primary-2);
   box-shadow: 0 10px 24px rgba(34, 211, 238, 0.22);
 }
-
 
 .kh2-history-actions {
   display: flex;
@@ -1514,7 +1510,6 @@ body {
   }
 }
 
-
 .clock-box {
   display: grid;
   gap: 6px;
@@ -1531,9 +1526,6 @@ body {
   font-weight: 700;
 }
 
-
-
-
 .login-screen.login-out {
   animation: loginFadeOut 450ms var(--ease) forwards;
 }
@@ -1545,8 +1537,16 @@ body {
   display: none;
   place-items: center;
   background:
-    radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.45), transparent 34%),
-    radial-gradient(circle at 75% 70%, rgba(34, 211, 238, 0.35), transparent 34%),
+    radial-gradient(
+      circle at 30% 20%,
+      rgba(139, 92, 246, 0.45),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 75% 70%,
+      rgba(34, 211, 238, 0.35),
+      transparent 34%
+    ),
     #050716;
 }
 
@@ -1630,7 +1630,8 @@ body {
 }
 
 @keyframes loadingPulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 0 35px rgba(34, 211, 238, 0.3);
   }
