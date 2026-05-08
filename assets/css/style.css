@@ -1469,3 +1469,16 @@ body {
   outline: 3px solid rgba(34, 211, 238, 0.45);
   outline-offset: 3px;
 }
+
+
+
+.heat-cell {
+  cursor: pointer;
+  border: 1px solid var(--line);
+}
+
+.heat-cell:hover {
+  transform: translateY(-3px) scale(1.04);
+  border-color: var(--primary-2);
+  box-shadow: 0 10px 24px rgba(34, 211, 238, 0.22);
+}

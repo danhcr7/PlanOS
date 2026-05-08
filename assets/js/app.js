@@ -747,6 +747,7 @@ function renderKh2() {
   `;
 
   initKh2Form();
+  initKh2HeatmapClick();
 }
 
 function renderKh2Heatmap() {
@@ -769,7 +770,7 @@ function renderKh2Heatmap() {
         type="button"
         class="${cls}"
         title="${key}"
-        onclick="selectKh2DateFromHeatmap('${key}')"
+        data-date="${key}"
       ></button>
     `);
   }
@@ -1007,6 +1008,34 @@ function initKh2Form() {
     );
     saveAll();
     renderKh2();
+  });
+}
+function initKh2HeatmapClick() {
+  document.querySelectorAll(".heat-cell").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const date = cell.dataset.date;
+      const dateInput = $("kh2DateInput");
+
+      if (!date || !dateInput) return;
+
+      dateInput.value = date;
+      dateInput.dispatchEvent(new Event("change"));
+
+      dateInput.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+
+      setTimeout(() => {
+        dateInput.focus();
+      }, 400);
+
+      showToast(
+        currentLang === "vi"
+          ? `Đã chọn ngày ${date}`
+          : `Selected ${date}`
+      );
+    });
   });
 }
 
