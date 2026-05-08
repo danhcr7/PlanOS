@@ -3,10 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PlanOS - Personal Dashboard</title>
+    <title>PlanOS</title>
 
     <link rel="stylesheet" href="./assets/css/style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
   </head>
 
   <body>
@@ -16,16 +19,15 @@
         <p class="eyebrow">PRIVATE ACCESS</p>
         <h1>Welcome to PlanOS</h1>
         <p class="login-desc">
-          Hệ thống quản lý kế hoạch cá nhân: học tập, tiết kiệm, laptop, MoMo và
-          nhiều hơn nữa.
+          Đăng nhập để vào hệ thống quản lý kế hoạch cá nhân.
         </p>
 
         <form id="loginForm">
           <label>
             Tài khoản
             <input
-              type="text"
               id="loginUsername"
+              type="text"
               placeholder="Nhập tài khoản..."
               required
             />
@@ -34,14 +36,14 @@
           <label>
             Mật khẩu
             <input
-              type="password"
               id="loginPassword"
+              type="password"
               placeholder="Nhập mật khẩu..."
               required
             />
           </label>
 
-          <button type="submit" class="login-btn">Đăng nhập</button>
+          <button class="login-btn" type="submit">Đăng nhập</button>
           <p class="login-error" id="loginError">
             Sai tài khoản hoặc mật khẩu 😭
           </p>
@@ -61,60 +63,78 @@
           </div>
 
           <nav class="menu nav">
-            <button class="menu-item nav-item active" data-page="dashboard">
+            <button
+              class="menu-item nav-item active"
+              data-page="dashboard"
+              data-i18n="dashboard"
+            >
               🏠 Tổng quan
             </button>
-            <button class="menu-item nav-item" data-page="kh1">
+            <button class="menu-item nav-item" data-page="kh1" data-i18n="kh1">
               📚 KH1 Học tập
             </button>
-            <button class="menu-item nav-item" data-page="kh2">
+            <button class="menu-item nav-item" data-page="kh2" data-i18n="kh2">
               💰 KH2 Tiết kiệm
             </button>
-            <button class="menu-item nav-item" data-page="kh3">
+            <button class="menu-item nav-item" data-page="kh3" data-i18n="kh3">
               🧩 KH3 Dự phòng
             </button>
-            <button class="menu-item nav-item" data-page="kh4">
+            <button class="menu-item nav-item" data-page="kh4" data-i18n="kh4">
               📖 KH4 Sách
             </button>
-            <button class="menu-item nav-item" data-page="kh5">
+            <button class="menu-item nav-item" data-page="kh5" data-i18n="kh5">
               💻 KH5 Laptop
             </button>
-            <button class="menu-item nav-item" data-page="kh6">
+            <button class="menu-item nav-item" data-page="kh6" data-i18n="kh6">
               💳 KH6 MoMo
             </button>
-            <button class="menu-item nav-item" data-page="calendar">
+            <button
+              class="menu-item nav-item"
+              data-page="calendar"
+              data-i18n="calendar"
+            >
               📅 Calendar
             </button>
-            <button class="menu-item nav-item" data-page="kanban">
+            <button
+              class="menu-item nav-item"
+              data-page="kanban"
+              data-i18n="kanban"
+            >
               🧲 Kanban
             </button>
-            <button class="menu-item nav-item" data-page="insights">
+            <button
+              class="menu-item nav-item"
+              data-page="insights"
+              data-i18n="insights"
+            >
               📊 Insights
             </button>
-            <button class="menu-item nav-item" data-page="settings">
+            <button
+              class="menu-item nav-item"
+              data-page="settings"
+              data-i18n="settings"
+            >
               ⚙️ Công cụ
             </button>
           </nav>
         </div>
 
         <div class="sidebar-bottom">
-          <div class="status-box sidebar-card">
-            <p>Trạng thái hôm nay</p>
+          <div class="status-box">
+            <p data-i18n="todayStatus">Trạng thái hôm nay</p>
             <h3 id="sideStatus">Sẵn sàng làm việc 🔥</h3>
           </div>
-
-          <!-- <button class="sidebar-logout" id="logoutBtn">🚪 Logout</button> -->
         </div>
       </aside>
 
-      <main class="main-content main">
+      <main class="main">
         <header class="topbar">
           <div>
             <p class="eyebrow">WELCOME BACK</p>
             <h1 id="pageTitle">Tổng quan kế hoạch</h1>
           </div>
 
-          <div class="top-actions actions">
+          <div class="top-actions">
             <input
               id="globalSearch"
               class="search-input"
@@ -122,12 +142,8 @@
               placeholder="Tìm KH, ghi chú, deadline..."
             />
             <button class="action-btn" id="langBtn">VI</button>
-            <button class="action-btn" id="notifyBtn" title="Thông báo">
-              🔔
-            </button>
-            <button class="action-btn" id="themeBtn" title="Đổi giao diện">
-              🌙
-            </button>
+            <button class="action-btn" id="notifyBtn">🔔</button>
+            <button class="action-btn" id="themeBtn">🌙</button>
             <button class="action-btn primary-btn" id="addPlanBtn">
               + Thêm
             </button>
@@ -158,34 +174,29 @@
           <input type="hidden" id="editId" />
 
           <label>
-            Nhóm KH
+            <span data-i18n="group">Nhóm KH</span>
             <select id="planType" required>
-              <option value="kh1">KH1 - Học tập</option>
-              <option value="kh2">KH2 - Tiết kiệm</option>
-              <option value="kh3">KH3 - Dự phòng</option>
-              <option value="kh4">KH4 - Sách</option>
-              <option value="kh5">KH5 - Laptop</option>
-              <option value="kh6">KH6 - MoMo</option>
+              <option value="kh1">KH1</option>
+              <option value="kh2">KH2</option>
+              <option value="kh3">KH3</option>
+              <option value="kh4">KH4</option>
+              <option value="kh5">KH5</option>
+              <option value="kh6">KH6</option>
             </select>
           </label>
 
           <label>
-            Tiêu đề
-            <input
-              id="planName"
-              type="text"
-              placeholder="VD: Hoàn thành bài thực hành..."
-              required
-            />
+            <span data-i18n="title">Tiêu đề</span>
+            <input id="planName" type="text" required />
           </label>
 
           <label>
-            Ngày / deadline
+            <span data-i18n="dateDeadline">Ngày / deadline</span>
             <input id="planDate" type="date" />
           </label>
 
           <label>
-            Trạng thái
+            <span data-i18n="status">Trạng thái</span>
             <select id="planStatus">
               <option value="Todo">Todo</option>
               <option value="Doing">Doing</option>
@@ -195,26 +206,24 @@
           </label>
 
           <label>
-            Ghi chú
-            <textarea
-              id="planNote"
-              placeholder="VD: Deadline, số tiền, trạng thái..."
-            ></textarea>
+            <span data-i18n="note">Ghi chú</span>
+            <textarea id="planNote"></textarea>
           </label>
 
           <div class="modal-actions">
             <button type="button" class="ghost-btn" id="cancelModalBtn">
               Hủy
             </button>
-            <button type="submit" class="primary-btn">Lưu</button>
+            <button type="submit" class="primary-btn" id="modalSaveBtn">
+              Lưu
+            </button>
           </div>
         </form>
       </div>
     </div>
 
     <input id="importFileInput" type="file" accept="application/json" hidden />
-
-    <div id="toast" class="toast">Đã lưu ✅</div>
+    <div id="toast" class="toast">Done</div>
 
     <script type="module" src="./assets/js/app.js"></script>
   </body>
