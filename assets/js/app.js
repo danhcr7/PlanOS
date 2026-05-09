@@ -147,15 +147,15 @@ const i18n = {
 
     chooseDate: "Chọn ngày để cập nhật",
     dateToEdit: "Ngày cần xem / sửa",
-    added15k: "Đã thêm 15.000đ vào quỹ",
-    tickPass: "Tick nếu ngày này đã PASS.",
+    added15k: "Đã thêm tiền vào quỹ",
+    tickPass: "Tick nếu ngày này có tiết kiệm.",
     withdrawAmount: "Số tiền rút từ quỹ",
     note: "Ghi chú",
     deleteThisDay: "Xóa ngày này",
     saveThisDay: "Lưu ngày này",
     selectedDayStatus: "Tình trạng ngày đang chọn",
     day: "Ngày",
-    added15kQuestion: "Đã thêm 15K?",
+    added15kQuestion: "Đã tiết kiệm?",
     withdrawn: "Đã rút",
     noNote: "Không có",
     heatmap: "🔥 Heatmap 60 ngày gần nhất",
@@ -617,8 +617,14 @@ function normalizeItem(item = {}) {
 }
 
 function normalizeKh2Record(record = {}) {
+  const saved = Boolean(record.saved);
+  const rawDeposit = Number(record.deposit ?? record.amount ?? 0);
+
   return {
-    saved: Boolean(record.saved),
+    saved,
+    deposit: saved
+      ? Math.max(0, rawDeposit || CONFIG.dailySaving)
+      : Math.max(0, rawDeposit || 0),
     withdraw: Math.max(0, Number(record.withdraw || 0)),
     note: record.note || "",
     updatedAt: record.updatedAt || new Date().toISOString(),
@@ -1237,7 +1243,10 @@ function focusScore(item) {
 function getKh2Stats() {
   const records = Object.values(store.data.kh2Daily || {});
   const passDays = records.filter((d) => d.saved).length;
-  const totalSaved = passDays * CONFIG.dailySaving;
+  const totalSaved = records.reduce(
+    (sum, d) => sum + (d.saved ? Number(d.deposit || CONFIG.dailySaving) : 0),
+    0,
+  );
   const totalWithdraw = records.reduce(
     (sum, d) => sum + Number(d.withdraw || 0),
     0,
@@ -2595,13 +2604,42 @@ function renderKh2() {
 
   setContent(`
     <div class="grid">
-      <div class="card hero small-hero">
-        <h2>💰 ${t("kh2")}</h2>
-        <p>${t("kh2Desc")}</p>
+      <div class="card hero small-hero kh2-hero-with-topup">
+        <div class="kh2-hero-copy">
+          <h2>💰 ${t("kh2")}</h2>
+          <p>${t("kh2Desc")}</p>
+        </div>
+
+        <div class="kh2-hero-topup">
+          <strong>💸 Bù quỹ thông minh</strong>
+
+          <p>
+            Nhập tiền dư để app tự bù các ngày chưa PASS gần nhất.
+            30.000đ = 2 ngày.
+          </p>
+
+          <div class="smart-topup-row">
+            <input
+              id="kh2TopupAmount"
+              type="number"
+              min="0"
+              step="1000"
+              placeholder="Ví dụ: 30000"
+            />
+
+            <button
+              type="button"
+              class="primary-btn"
+              data-action="kh2-smart-topup"
+            >
+              Bù tự động
+            </button>
+          </div>
+        </div>
       </div>
       ${renderStreakIntelligence(kh2)}
       <div class="grid grid-4">
-        ${statCard(t("passDays"), kh2.passDays, t("passDaysDesc"))}
+        ${statCard(t("passDays"), kh2.passDays, "Số ngày có tiết kiệm")}
         ${statCard("🔥 Streak hiện tại", `${kh2.currentStreak} ngày`, kh2.streakLevel)}
 ${statCard("🏆 Best streak", `${kh2.bestStreak} ngày`, "Kỷ lục tốt nhất")}
 ${statCard("📉 Ngày fail", kh2.missedDays, `Trong ${CONFIG.heatmapDays} ngày`)}
@@ -2609,7 +2647,7 @@ ${statCard("🧠 Streak Health", `${kh2.streakHealth}/100`, "Độ khỏe thói 
       </div>
 
       <div class="grid grid-4">
-        ${statCard(t("totalSaved"), formatMoney(kh2.totalSaved), t("totalSavedDesc"))}
+        ${statCard(t("totalSaved"), formatMoney(kh2.totalSaved), "Tổng tiền đã tiết kiệm")}
         ${statCard(t("totalWithdraw"), formatMoney(kh2.totalWithdraw), t("totalWithdrawDesc"))}
         ${statCard(t("fundBalance"), formatMoney(kh2.balance), t("balanceDesc"), kh2.balance < 0 ? "danger-text" : "success-text")}
         ${statCard(t("kh2Today"), store.data.kh2Daily?.[today()]?.saved ? t("passedToday") : t("notPassedToday"), formatDate(today()))}
@@ -2623,8 +2661,16 @@ ${statCard("🧠 Streak Health", `${kh2.streakHealth}/100`, "Độ khỏe thói 
 
           <div class="checkbox-row">
             <input type="checkbox" id="kh2SavedInput" />
-            <div><strong>${t("added15k")}</strong><p class="muted">${t("tickPass")}</p></div>
+            <div>
+              <strong>Đã thêm tiền vào quỹ</strong>
+              <p class="muted">Tick nếu ngày này có tiết kiệm. Số tiền có thể nhập tự do.</p>
+            </div>
           </div>
+
+          <label>
+            Số tiền tiết kiệm ngày này
+            <input type="number" id="kh2DepositInput" min="0" step="1000" placeholder="VD: 15000, 30000, 50000..." />
+          </label>
 
           <label>${t("withdrawAmount")}<input type="number" id="kh2WithdrawInput" min="0" step="1000" /></label>
           <label>${t("note")}<textarea id="kh2NoteInput"></textarea></label>
@@ -2639,7 +2685,8 @@ ${statCard("🧠 Streak Health", `${kh2.streakHealth}/100`, "Độ khỏe thói 
           <h3>${t("selectedDayStatus")}</h3>
           <div class="kh2-status">
             <div class="status-line"><span>${t("day")}</span><strong id="kh2SelectedDate">--</strong></div>
-            <div class="status-line"><span>${t("added15kQuestion")}</span><strong id="kh2SelectedSaved">--</strong></div>
+            <div class="status-line"><span>Đã tiết kiệm?</span><strong id="kh2SelectedSaved">--</strong></div>
+            <div class="status-line"><span>Số tiền tiết kiệm</span><strong id="kh2SelectedDeposit">0đ</strong></div>
             <div class="status-line"><span>${t("withdrawn")}</span><strong id="kh2SelectedWithdraw">0đ</strong></div>
             <div class="status-line"><span>${t("note")}</span><strong id="kh2SelectedNote">${t("noNote")}</strong></div>
           </div>
@@ -2711,7 +2758,8 @@ function renderKh2History() {
           <div>
             <strong>${escapeHTML(date)}</strong>
             <p class="muted">
-              ${t("withdrawn")}: ${formatMoney(r.withdraw || 0)}
+              Đã thêm: ${formatMoney(r.saved ? r.deposit || CONFIG.dailySaving : 0)}
+              • ${t("withdrawn")}: ${formatMoney(r.withdraw || 0)}
               ${r.note ? "• " + escapeHTML(r.note) : ""}
             </p>
           </div>
@@ -2919,6 +2967,7 @@ function renderSettings() {
 function initKh2Form() {
   const dateInput = $("kh2DateInput");
   const savedInput = $("kh2SavedInput");
+  const depositInput = $("kh2DepositInput");
   const withdrawInput = $("kh2WithdrawInput");
   const noteInput = $("kh2NoteInput");
   const saveBtn = $("kh2SaveDayBtn");
@@ -2927,6 +2976,7 @@ function initKh2Form() {
   if (
     !dateInput ||
     !savedInput ||
+    !depositInput ||
     !withdrawInput ||
     !noteInput ||
     !saveBtn ||
@@ -2938,11 +2988,15 @@ function initKh2Form() {
     const date = dateInput.value;
     const record = store.data.kh2Daily[date] || {
       saved: false,
+      deposit: 0,
       withdraw: 0,
       note: "",
     };
 
     savedInput.checked = Boolean(record.saved);
+    depositInput.value = record.saved
+      ? Number(record.deposit || CONFIG.dailySaving)
+      : Number(record.deposit || 0) || "";
     withdrawInput.value = record.withdraw || "";
     noteInput.value = record.note || "";
 
@@ -2954,6 +3008,10 @@ function initKh2Form() {
       : `${t("notPass")} ❌`;
     selectedSaved.className = record.saved ? "success-text" : "danger-text";
 
+    $("kh2SelectedDeposit").textContent = record.saved
+      ? formatMoney(record.deposit || CONFIG.dailySaving)
+      : formatMoney(0);
+
     $("kh2SelectedWithdraw").textContent = formatMoney(record.withdraw || 0);
     $("kh2SelectedNote").textContent = record.note || t("noNote");
   }
@@ -2962,6 +3020,24 @@ function initKh2Form() {
   renderSelected();
 
   dateInput.addEventListener("change", renderSelected);
+
+  savedInput.addEventListener("change", () => {
+    if (savedInput.checked && !Number(depositInput.value || 0)) {
+      depositInput.value = CONFIG.dailySaving;
+    }
+
+    if (!savedInput.checked) {
+      depositInput.value = "";
+    }
+  });
+
+  depositInput.addEventListener("input", () => {
+    const deposit = Number(depositInput.value || 0);
+
+    if (deposit > 0) {
+      savedInput.checked = true;
+    }
+  });
 
   saveBtn.addEventListener("click", () => {
     const date = dateInput.value;
@@ -2974,8 +3050,12 @@ function initKh2Form() {
 
     commit(
       (data) => {
+        const deposit = Math.max(0, Number(depositInput.value || 0));
+        const saved = savedInput.checked || deposit > 0;
+
         data.kh2Daily[date] = {
-          saved: savedInput.checked,
+          saved,
+          deposit: saved ? deposit || CONFIG.dailySaving : 0,
           withdraw: Math.max(0, Number(withdrawInput.value || 0)),
           note: noteInput.value.trim(),
           updatedAt: new Date().toISOString(),
@@ -4104,6 +4184,16 @@ function handleDocumentClick(event) {
     "move-item": () => moveItem(group, id, status),
     "select-kh2-date": () => selectKh2Date(date),
     "delete-kh2-day": () => deleteKh2HistoryDay(date),
+    "kh2-smart-topup": () => {
+      const input = $("kh2TopupAmount");
+      const amount = Number(input?.value || 0);
+
+      autoTopupKh2(amount);
+
+      if (input) {
+        input.value = "";
+      }
+    },
     "export-data": () => exportData(),
     "import-data": () => triggerImport(),
     "request-notifications": () => requestNotifications(),
@@ -4334,6 +4424,7 @@ Object.assign(window, {
   setSavingGoal,
   setSavingLock,
   syncFromCloudIfNewer,
+  autoTopupKh2,
 });
 /* =========================================================
    GLOBAL CLICK EFFECTS
@@ -4417,4 +4508,87 @@ function initClickEffects() {
     { passive: true },
   );
 }
+
+/* =========================================================
+   KH2 SMART AUTO TOPUP
+========================================================= */
+
+function autoTopupKh2(amount) {
+  const daily = CONFIG.dailySaving || 15000;
+
+  const normalizedAmount = Number(amount || 0);
+
+  if (!normalizedAmount || normalizedAmount <= 0) {
+    showToast("Số tiền bù không hợp lệ");
+    return;
+  }
+
+  const daysToFill = Math.floor(normalizedAmount / daily);
+  const leftover = normalizedAmount % daily;
+
+  if (daysToFill <= 0) {
+    showToast(`Chưa đủ ${formatMoney(daily)} để bù 1 ngày`);
+    return;
+  }
+
+  const filledDates = [];
+
+  commit(
+    (data) => {
+      if (!data.kh2Daily) {
+        data.kh2Daily = {};
+      }
+
+      let filled = 0;
+
+      for (
+        let i = 0;
+        i < CONFIG.heatmapDays && filled < daysToFill;
+        i += 1
+      ) {
+        const date = addDays(today(), -i);
+
+        const current = data.kh2Daily[date] || {};
+
+        if (!current.saved) {
+          data.kh2Daily[date] = {
+            ...current,
+            saved: true,
+            deposit: CONFIG.dailySaving,
+            withdraw: Math.max(0, Number(current.withdraw || 0)),
+            note: current.note
+              ? `${current.note} • Bù tự động ${formatMoney(normalizedAmount)}`
+              : `Bù tự động ${formatMoney(normalizedAmount)}`,
+            autoFilled: true,
+            updatedAt: new Date().toISOString(),
+          };
+
+          filled += 1;
+          filledDates.push(date);
+        }
+      }
+    },
+    {
+      activity: {
+        action: "Bù quỹ KH2 tự động",
+        detail: `${formatMoney(normalizedAmount)} → ${filledDates.length} ngày`,
+      },
+
+      toast:
+        `Đã bù ${filledDates.length} ngày` +
+        (leftover
+          ? ` • dư ${formatMoney(leftover)}`
+          : "") +
+        ` ✅`,
+    },
+  );
+
+  return {
+    filledDays: filledDates.length,
+    leftover,
+    dates: filledDates,
+  };
+}
+
+
 initApp();

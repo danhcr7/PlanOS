@@ -3126,3 +3126,77 @@ form {
     align-items: flex-start;
   }
 }
+
+/* =========================================================
+   KH2 SMART TOPUP UI FIX
+   Fixes broken bottom layout when the topup UI is placed incorrectly.
+========================================================= */
+
+/* Hide accidentally appended KH2 topup block outside the app shell. */
+body > .form-group,
+html > .form-group {
+  display: none !important;
+}
+
+/* Correct layout for KH2 smart topup when rendered inside app.js content. */
+.kh2-smart-topup,
+.card .kh2-smart-topup {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.12), transparent 36%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.kh2-smart-topup .label,
+.kh2-smart-topup label {
+  display: block;
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.kh2-smart-topup .muted {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.smart-topup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.smart-topup-row input {
+  width: 100%;
+  min-width: 0;
+}
+
+.smart-topup-row .primary-btn,
+.smart-topup-row button {
+  height: 48px;
+  min-width: 132px;
+  padding-inline: 18px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .smart-topup-row {
+    grid-template-columns: 1fr;
+  }
+
+  .smart-topup-row .primary-btn,
+  .smart-topup-row button {
+    width: 100%;
+  }
+}
