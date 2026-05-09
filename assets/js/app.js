@@ -1,4 +1,4 @@
-import { saveDataToCloud, loadDataFromCloud } from "./supabase.js";
+import { saveDataToCloud, loadDataFromCloud } from "./firebase.js";
 
 /* =========================================================
    PlanOS — app.js 2026 Optimized
@@ -453,6 +453,7 @@ const runtime = {
   lastCloudLoadAt: 0,
   syncRetryCount: 0,
   backgroundSyncTimer: null,
+  clickEffectsReady: false,
   analyticsCache: null,
   analyticsCacheVersion: -1,
 };
@@ -807,7 +808,7 @@ function getCloudDoc(raw) {
 function setSyncStatus(status, message = "") {
   runtime.syncStatus = status;
 
-  if (!dom.cloudSaveBtn || runtime.isCloudSaving) return;
+  if (!dom.cloudSaveBtn) return;
 
   const labels = {
     idle: t("save"),
@@ -949,6 +950,7 @@ async function saveCloud(showMessage = false) {
 
     if (showMessage) {
       setButtonBusy(dom.cloudSaveBtn, false);
+      setSyncStatus(runtime.syncStatus || "idle");
     }
 
     if (runtime.pendingCloudSave) {
@@ -1655,8 +1657,9 @@ function getAssistantAdvice() {
 function applyLanguage() {
   if (dom.globalSearch) dom.globalSearch.placeholder = t("search");
   if (dom.addPlanBtn) dom.addPlanBtn.textContent = t("add");
-  if (dom.cloudSaveBtn && !runtime.isCloudSaving)
-    dom.cloudSaveBtn.textContent = t("save");
+  if (dom.cloudSaveBtn && !runtime.isCloudSaving) {
+    setSyncStatus(runtime.syncStatus || "idle");
+  }
   if (dom.cloudLoadBtn) dom.cloudLoadBtn.textContent = t("load");
   if (dom.logoutBtn) dom.logoutBtn.textContent = t("logout");
   if (dom.langBtn) dom.langBtn.textContent = runtime.currentLang.toUpperCase();
@@ -4032,9 +4035,15 @@ function checkKh1BrowserReminders() {
     task.browserAlertSentAt = new Date().toISOString();
 
     saveLocal();
+    markDirty();
+    scheduleCloudSave(1200);
   });
 }
 function manualSave() {
+  if (runtime.lastSavedVersion === runtime.dirtyVersion) {
+    runtime.dirtyVersion += 1;
+  }
+
   markDirty();
   saveCloud(true);
 }
@@ -4331,6 +4340,10 @@ Object.assign(window, {
 ========================================================= */
 
 function initClickEffects() {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+  if (runtime.clickEffectsReady) return;
+  runtime.clickEffectsReady = true;
+
   const colors = [
     "#22d3ee",
     "#8b5cf6",
@@ -4386,16 +4399,22 @@ function initClickEffects() {
     setTimeout(() => ring.remove(), 800);
   }
 
-  document.addEventListener("pointerdown", (event) => {
-    if (
-      event.target.closest("input") ||
-      event.target.closest("textarea") ||
-      event.target.closest("select")
-    ) {
-      return;
-    }
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (event.button && event.button !== 0) return;
 
-    createClickFx(event.clientX, event.clientY);
-  });
+      if (
+        event.target.closest("input") ||
+        event.target.closest("textarea") ||
+        event.target.closest("select")
+      ) {
+        return;
+      }
+
+      createClickFx(event.clientX, event.clientY);
+    },
+    { passive: true },
+  );
 }
 initApp();

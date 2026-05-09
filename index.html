@@ -1,4 +1,4 @@
-`<!doctype html>
+<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,8 @@
       content="PlanOS - Personal Operating System for planning, study, saving and life management."
     />
     <title>PlanOS</title>
+    <meta name="theme-color" content="#030712" />
+    <link rel="icon" href="data:," />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,6 +18,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./assets/css/style.css" />
+    <link rel="modulepreload" href="./assets/js/app.js" />
   </head>
 
   <body>
@@ -180,9 +183,13 @@
             >
               📊 Insights
             </button>
-            <button class="menu-item nav-item" data-page="saving">
-  💵 Tiết kiệm cá nhân
-</button>
+            <button
+              class="menu-item nav-item"
+              data-page="saving"
+              data-i18n="saving"
+            >
+              💵 Tiết kiệm cá nhân
+            </button>
             <button
               class="menu-item nav-item"
               data-page="settings"
@@ -274,9 +281,9 @@
             <input id="planDate" type="date" />
           </label>
           <label>
-  <span>Thời gian</span>
-  <input id="planTime" type="time" />
-</label>
+            <span>Thời gian</span>
+            <input id="planTime" type="time" />
+          </label>
           <label>
             <span data-i18n="status">Trạng thái</span>
             <select id="planStatus">

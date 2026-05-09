@@ -3038,3 +3038,91 @@ form {
 .kh2-streak-value {
   transform: translateY(-3px);
 }
+
+/* =========================================================
+   PRO PATCH — SYNC UI / EFFECTS / ACCESSIBILITY
+========================================================= */
+
+#cloudSaveBtn[title]:not([title=""]) {
+  position: relative;
+}
+
+.click-fx-dot,
+.click-fx-ring,
+.click-fx-particle {
+  will-change: transform, opacity;
+  contain: layout paint style;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .click-fx-dot,
+  .click-fx-ring,
+  .click-fx-particle {
+    display: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
+
+.streak-card .streak-main h3 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  line-height: 0.92;
+}
+
+.streak-card .streak-main h3,
+.streak-card .streak-main h3 * {
+  vertical-align: middle;
+}
+
+.streak-card .streak-main .muted {
+  margin-top: 10px;
+  line-height: 1.35;
+}
+
+.payment-paid strong,
+.payment-paid .muted {
+  text-decoration: line-through;
+  opacity: 0.72;
+}
+
+.payment-check {
+  display: inline-flex;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.payment-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary-2);
+}
+
+@media (max-width: 760px) {
+  .top-actions {
+    gap: 8px;
+  }
+
+  .search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .item,
+  .mini-note,
+  .timeline-item,
+  .kanban-card,
+  .stat-row {
+    align-items: flex-start;
+  }
+}
