@@ -408,6 +408,7 @@ const dom = {
   planType: $("planType"),
   planName: $("planName"),
   planDate: $("planDate"),
+  planTime: $("planTime"),
   planStatus: $("planStatus"),
   planNote: $("planNote"),
   toast: $("toast"),
@@ -585,8 +586,11 @@ function normalizeItem(item = {}) {
     id: item.id || uid(),
     name: String(item.name || item.title || "").trim(),
     date: item.date || "",
+    time: item.time || "",
+    datetime: item.datetime || "",
     status: item.status || STATUS.todo,
     note: item.note || "",
+    paid: Boolean(item.paid),
     createdAt: item.createdAt || item.updatedAt || now,
     updatedAt: item.updatedAt || item.createdAt || now,
   };
@@ -1671,16 +1675,15 @@ function initKh1TodoForm() {
     const now = new Date().toISOString();
 
     const payload = {
-      id: editId.value || uid(),
-      name,
-      date,
-      time,
-      datetime,
-      email,
-      status,
-      note,
-      updatedAt: now,
-    };
+  id: id || uid(),
+  name,
+  date,
+  time,
+  datetime,
+  status: dom.planStatus.value,
+  note: dom.planNote.value.trim(),
+  updatedAt: now,
+};
 
     commit(
       (data) => {
@@ -1747,6 +1750,55 @@ function renderItem(item) {
         <span class="badge ${badgeClass(item.status)}">${escapeHTML(statusLabel(item.status))}</span>
         <button class="mini-btn" data-action="edit-item" data-group="${escapeAttr(group)}" data-id="${escapeAttr(item.id)}">${t("edit")}</button>
         <button class="mini-btn danger" data-action="delete-item" data-group="${escapeAttr(group)}" data-id="${escapeAttr(item.id)}">${t("delete")}</button>
+      </div>
+    </div>
+  `;
+}
+function renderKh6PaymentItem(item) {
+  const dateTimeText = item.datetime
+    ? new Date(item.datetime).toLocaleString("vi-VN")
+    : item.date
+      ? `${formatDate(item.date)} ${item.time || ""}`
+      : "Chưa có thời gian";
+
+  return `
+    <div class="item payment-item ${item.paid ? "payment-paid" : ""}">
+      <div>
+        <strong>${escapeHTML(item.name)}</strong>
+        <p class="muted">
+          💳 Kỳ thanh toán MoMo • ${escapeHTML(dateTimeText)}
+          ${item.note ? " • " + escapeHTML(item.note) : ""}
+        </p>
+      </div>
+
+      <div class="item-actions">
+        <label class="payment-check">
+          <input
+            type="checkbox"
+            data-action="toggle-kh6-paid"
+            data-id="${escapeAttr(item.id)}"
+            ${item.paid ? "checked" : ""}
+          />
+          <span>Đã thanh toán</span>
+        </label>
+
+        <button
+          class="mini-btn"
+          data-action="edit-item"
+          data-group="kh6"
+          data-id="${escapeAttr(item.id)}"
+        >
+          Sửa
+        </button>
+
+        <button
+          class="mini-btn danger"
+          data-action="delete-item"
+          data-group="kh6"
+          data-id="${escapeAttr(item.id)}"
+        >
+          Xóa
+        </button>
       </div>
     </div>
   `;
@@ -2115,7 +2167,7 @@ function renderDashboard() {
 function renderKhPage(key) {
   if (key === "kh1") return renderKh1Todo();
   if (key === "kh2") return renderKh2();
-
+  if (key === "kh6") return renderKh6();
   const items = getFilteredItems(
     store.data[key].map((item) => ({ ...item, group: key })),
   );
@@ -2145,7 +2197,45 @@ function renderKhPage(key) {
     </div>
   `);
 }
+function renderKh6() {
+  const items = getFilteredItems(
+    store.data.kh6.map((item) => ({ ...item, group: "kh6" })),
+  ).sort((a, b) => {
+    const da = a.datetime || `${a.date || ""}T${a.time || "00:00"}`;
+    const db = b.datetime || `${b.date || ""}T${b.time || "00:00"}`;
+    return da.localeCompare(db);
+  });
 
+  setContent(`
+    <div class="grid">
+      <div class="card hero small-hero">
+        <h2>💳 KH6 MoMo</h2>
+        <p>Theo dõi các kỳ góp MoMo theo ngày, tháng, năm và thời gian.</p>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h3>Danh sách kỳ thanh toán MoMo</h3>
+            <p class="muted">Tick khi đã thanh toán. Kỳ đã thanh toán sẽ bị gạch ngang, chỉ xoá khi bấm nút Xóa.</p>
+          </div>
+
+          <button class="primary-btn" data-action="add-item" data-group="kh6">
+            + Thêm kỳ thanh toán
+          </button>
+        </div>
+
+        <div class="list">
+          ${
+            items.length
+              ? items.map(renderKh6PaymentItem).join("")
+              : `<p class="muted">Chưa có kỳ thanh toán MoMo nào.</p>`
+          }
+        </div>
+      </div>
+    </div>
+  `);
+}
 function renderKh2() {
   const { kh2 } = getAnalytics();
 
@@ -2620,6 +2710,9 @@ function openAddModal(
   dom.planType.value = type;
   dom.planName.value = "";
   dom.planDate.value = "";
+  if (dom.planTime) {
+  dom.planTime.value = "";
+}
   dom.planStatus.value = STATUS.todo;
   dom.planNote.value = "";
 
@@ -2637,6 +2730,9 @@ function openEditModal(type, id) {
   dom.planType.value = type;
   dom.planName.value = item.name || "";
   dom.planDate.value = item.date || "";
+  if (dom.planTime) {
+  dom.planTime.value = item.time || "";
+}
   dom.planStatus.value = item.status || STATUS.todo;
   dom.planNote.value = item.note || "";
 
@@ -2755,6 +2851,13 @@ function handlePlanSubmit(event) {
   if (!GROUPS.includes(type) || !name) return;
 
   const now = new Date().toISOString();
+  const date = dom.planDate.value;
+const time = dom.planTime?.value || "";
+
+const datetime =
+  date && time
+    ? `${date}T${time}`
+    : "";
   const payload = {
     id: id || uid(),
     name,
