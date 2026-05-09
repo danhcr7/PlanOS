@@ -2692,3 +2692,20 @@ form {
     height: 86px;
   }
 }
+
+
+.payment-item.payment-paid strong {
+  text-decoration: line-through;
+  opacity: 0.62;
+}
+
+.payment-item.payment-paid .muted {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.payment-item.payment-paid {
+  border-color: rgba(34, 197, 94, 0.28);
+  background:
+    linear-gradient(135deg, rgba(34,197,94,0.12), rgba(255,255,255,0.04));
+}

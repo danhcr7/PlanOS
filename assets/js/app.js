@@ -664,7 +664,7 @@ function invalidateAnalytics() {
 }
 
 function commit(mutator, options = {}) {
-  const { activity, render = true, cloud = false, toast = "" } = options;
+  const { activity, render = true, cloud = true, toast = "" } = options;
   mutator(store.data);
 
   if (activity) addActivity(activity.action, activity.detail, false);
@@ -2840,7 +2840,59 @@ function moveItem(type, id, status) {
     },
   );
 }
+function toggleKh6Paid(id) {
+  const item = store.data.kh6.find(
+    (payment) => payment.id === id,
+  );
 
+  if (!item) return;
+
+  if (!item.paid) {
+    const ok = confirm(
+      `Đã thanh toán kỳ "${item.name}" chưa?`,
+    );
+
+    if (!ok) {
+      loadPage(runtime.currentPage);
+      return;
+    }
+  }
+
+  commit(
+    (data) => {
+      data.kh6 = data.kh6.map((payment) => {
+        if (payment.id !== id) {
+          return payment;
+        }
+
+        const newPaidState = !payment.paid;
+
+        return {
+          ...payment,
+          paid: newPaidState,
+          status: newPaidState
+            ? STATUS.done
+            : STATUS.todo,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+    },
+    {
+      activity: {
+        action: item.paid
+          ? "Bỏ thanh toán KH6"
+          : "Thanh toán KH6",
+        detail: item.name,
+      },
+
+      toast: item.paid
+        ? "Đã bỏ đánh dấu thanh toán"
+        : "Đã thanh toán ✅",
+    },
+  );
+
+  loadPage(runtime.currentPage);
+}
 function handlePlanSubmit(event) {
   event.preventDefault();
 
@@ -3072,6 +3124,7 @@ function handleDocumentClick(event) {
 
   const actions = {
     "add-item": () => openAddModal(group),
+    "toggle-kh6-paid": () => toggleKh6Paid(id),
     "edit-item": () => openEditModal(group, id),
     "delete-item": () => deleteItem(group, id),
     "move-item": () => moveItem(group, id, status),
