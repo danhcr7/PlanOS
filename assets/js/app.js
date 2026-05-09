@@ -3742,7 +3742,6 @@ function manualLoad() {
 
 const pageRenderers = {
   dashboard: renderDashboard,
-  saving: renderSaving,
   calendar: renderCalendar,
   kanban: renderKanban,
   insights: renderInsights,
@@ -3796,6 +3795,17 @@ function handleDocumentClick(event) {
     "manual-load": () => manualLoad(),
     "edit-kh1-todo": () => editKh1Todo(id),
     "delete-kh1-todo": () => deleteKh1Todo(id),
+
+    // Personal Saving actions
+    "quick-saving": () => quickSaving(target.dataset.type, target.dataset.amount),
+    "edit-saving-tx": () => editSavingTransaction(id),
+    "soft-delete-saving-tx": () => softDeleteSavingTransaction(id),
+    "restore-saving-tx": () => restoreSavingTransaction(id),
+    "hard-delete-saving-tx": () => hardDeleteSavingTransaction(id),
+    "filter-saving": () => filterSavingTransactions(target.dataset.filter),
+    "set-saving-goal": () => setSavingGoal(),
+    "set-saving-lock": () => setSavingLock(),
+
     "clear-search": () => {
       runtime.searchQuery = "";
       if (dom.globalSearch) dom.globalSearch.value = "";
@@ -3966,6 +3976,13 @@ Object.assign(window, {
   renderSaving,
   addSavingTransaction,
   quickSaving,
+  editSavingTransaction,
+  softDeleteSavingTransaction,
+  restoreSavingTransaction,
+  hardDeleteSavingTransaction,
+  filterSavingTransactions,
+  setSavingGoal,
+  setSavingLock,
 });
 
 initApp();
