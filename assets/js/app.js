@@ -24,12 +24,16 @@ const CONFIG = Object.freeze({
   saveDelay: 600,
   searchDelay: 160,
   loadingDuration: 1600,
-  storage: {
+
+youtubeApiKey: "AIzaSyCHH7kNKZRreseLYOt4Civ4qCbVfcPcWBE",
+
+storage: {
     data: "planosData",
     login: "planosLoggedIn",
     theme: "planosTheme",
     lang: "planosLang",
     syncMeta: "planosSyncMeta",
+music: "planosMusic",
   },
 });
 
@@ -432,7 +436,13 @@ const dom = {
   logoutBtn: $("logoutBtn"),
   langBtn: $("langBtn"),
   app: $("app"),
-  loadingScreen: $("loadingScreen"),
+loadingScreen: $("loadingScreen"),
+
+musicSearchInput: $("musicSearchInput"),
+musicPlayBtn: $("musicPlayBtn"),
+musicSuggestions: $("musicSuggestions"),
+musicPlayerFrame: $("musicPlayerFrame"),
+musicPlayerShell: document.querySelector(".music-player-shell"),
 };
 
 const runtime = {
@@ -455,14 +465,316 @@ const runtime = {
   backgroundSyncTimer: null,
   clickEffectsReady: false,
   analyticsCache: null,
-  analyticsCacheVersion: -1,
+analyticsCacheVersion: -1,
+
+musicQuery: "",
+musicResults: [],
+musicSelected: null,
+musicIsPlaying: false,
+musicSearchTimer: null,
+playerDragging: false,
+playerOffsetX: 0,
+playerOffsetY: 0,
 };
 
 const store = {
   data: normalizeData(),
   version: 0,
 };
+/* =========================================================
+   MUSIC WIDGET
+========================================================= */
 
+function loadSavedMusic() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CONFIG.storage.music));
+
+    if (!saved?.videoId) return;
+
+    runtime.musicSelected = saved;
+
+    if (dom.musicSearchInput) {
+      dom.musicSearchInput.value = saved.title || "";
+    }
+  } catch (error) {
+    console.warn("PlanOS music parse error:", error);
+  }
+}
+
+function saveSelectedMusic(track) {
+  localStorage.setItem(CONFIG.storage.music, JSON.stringify(track));
+}
+
+function clearMusicSuggestions() {
+  if (!dom.musicSuggestions) return;
+
+  dom.musicSuggestions.innerHTML = "";
+  dom.musicSuggestions.classList.remove("show");
+}
+
+function renderMusicSuggestions(items = []) {
+  if (!dom.musicSuggestions) return;
+
+  if (!items.length) {
+    clearMusicSuggestions();
+    return;
+  }
+
+  dom.musicSuggestions.innerHTML = items
+    .map(
+      (item) => `
+        <button
+          class="music-suggestion-item"
+          type="button"
+          data-action="select-music"
+          data-video-id="${escapeAttr(item.videoId)}"
+          data-title="${escapeAttr(item.title)}"
+          data-channel="${escapeAttr(item.channel)}"
+          data-thumb="${escapeAttr(item.thumb)}"
+        >
+          <img
+            class="music-suggestion-thumb"
+            src="${escapeAttr(item.thumb)}"
+            alt=""
+          />
+
+          <span class="music-suggestion-info">
+            <strong>${escapeHTML(item.title)}</strong>
+            <span>${escapeHTML(item.channel)}</span>
+          </span>
+        </button>
+      `,
+    )
+    .join("");
+
+  dom.musicSuggestions.classList.add("show");
+}
+
+async function searchMusic(query) {
+  const q = query.trim();
+
+  if (!q) {
+    clearMusicSuggestions();
+    return;
+  }
+
+  if (
+    !CONFIG.youtubeApiKey ||
+    CONFIG.youtubeApiKey === "DAN_API_KEY_YOUTUBE_CUA_BAN_VAO_DAY"
+  ) {
+    renderMusicSuggestions([
+      {
+        videoId: "jfKfPfyJRdk",
+        title: "lofi hip hop radio - beats to relax/study to",
+        channel: "Lofi Girl",
+        thumb: "https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg",
+      },
+      {
+        videoId: "5qap5aO4i9A",
+        title: "lofi hip hop radio - beats to sleep/chill to",
+        channel: "Lofi Girl",
+        thumb: "https://i.ytimg.com/vi/5qap5aO4i9A/hqdefault.jpg",
+      },
+    ]);
+
+    showToast("Chưa có YouTube API key, đang dùng dữ liệu demo.");
+    return;
+  }
+
+  try {
+    const params = new URLSearchParams({
+      part: "snippet",
+      type: "video",
+      maxResults: "6",
+      q,
+      videoCategoryId: "10",
+      key: CONFIG.youtubeApiKey,
+    });
+
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
+    );
+
+    if (!response.ok) {
+      throw new Error("YouTube search failed");
+    }
+
+    const data = await response.json();
+
+    const items = (data.items || [])
+      .filter((item) => item.id?.videoId)
+      .map((item) => ({
+        videoId: item.id.videoId,
+        title: item.snippet?.title || "Unknown song",
+        channel: item.snippet?.channelTitle || "YouTube",
+        thumb:
+          item.snippet?.thumbnails?.medium?.url ||
+          item.snippet?.thumbnails?.default?.url ||
+          "",
+      }));
+
+    runtime.musicResults = items;
+    renderMusicSuggestions(items);
+  } catch (error) {
+    console.error("Music search error:", error);
+    showToast("Không tìm được nhạc 😭");
+  }
+}
+
+function selectMusic(track) {
+  runtime.musicSelected = track;
+  runtime.musicIsPlaying = false;
+
+  saveSelectedMusic(track);
+  clearMusicSuggestions();
+
+  if (dom.musicSearchInput) {
+    dom.musicSearchInput.value = track.title;
+  }
+
+  if (dom.musicPlayBtn) {
+    dom.musicPlayBtn.textContent = "▶";
+  }
+
+  showToast(`Đã chọn: ${track.title}`);
+}
+
+function playSelectedMusic() {
+  if (!runtime.musicSelected?.videoId) {
+    const query = dom.musicSearchInput?.value.trim();
+
+    if (query) {
+      searchMusic(query);
+      showToast("Chọn một bài trong danh sách gợi ý trước.");
+    } else {
+      showToast("Nhập tên bài hát trước nha.");
+    }
+
+    return;
+  }
+
+  const videoId = runtime.musicSelected.videoId;
+
+  if (!runtime.musicIsPlaying) {
+    const src =
+  `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` +
+  `?autoplay=1&controls=1&rel=0&modestbranding=1`;
+
+    dom.musicPlayerFrame.src = src;
+    dom.musicPlayerShell?.classList.add("show");
+
+    runtime.musicIsPlaying = true;
+    document
+  .querySelector(".music-panel")
+  ?.classList.add("playing");
+    if (dom.musicPlayBtn) {
+      dom.musicPlayBtn.textContent = "⏸";
+    }
+
+    return;
+  }
+
+  stopMusic();
+}
+
+function stopMusic() {
+  runtime.musicIsPlaying = false;
+  document
+  .querySelector(".music-panel")
+  ?.classList.remove("playing");
+  if (dom.musicPlayerFrame) {
+    dom.musicPlayerFrame.src = "";
+  }
+
+  dom.musicPlayerShell?.classList.remove("show");
+
+  if (dom.musicPlayBtn) {
+    dom.musicPlayBtn.textContent = "▶";
+  }
+}
+
+function initMusicWidget() {
+  loadSavedMusic();
+  document
+  .getElementById("musicCloseBtn")
+  ?.addEventListener("click", stopMusic);
+  document
+  .getElementById("musicMinBtn")
+  ?.addEventListener("click", () => {
+
+    const player =
+      document.querySelector(".music-player-shell");
+
+    player.classList.toggle("minimized");
+  });
+  dom.musicSearchInput?.addEventListener("input", (event) => {
+    const query = event.target.value;
+
+    runtime.musicQuery = query;
+    runtime.musicSelected = null;
+
+    clearTimeout(runtime.musicSearchTimer);
+
+    runtime.musicSearchTimer = setTimeout(() => {
+      searchMusic(query);
+    }, 420);
+  });
+
+  dom.musicSearchInput?.addEventListener("focus", () => {
+    if (runtime.musicResults.length) {
+      renderMusicSuggestions(runtime.musicResults);
+    }
+  });
+
+  dom.musicPlayBtn?.addEventListener("click", playSelectedMusic);
+
+  document.addEventListener("click", (event) => {
+    const selectBtn = event.target.closest("[data-action='select-music']");
+
+    if (selectBtn) {
+      selectMusic({
+        videoId: selectBtn.dataset.videoId,
+        title: selectBtn.dataset.title,
+        channel: selectBtn.dataset.channel,
+        thumb: selectBtn.dataset.thumb,
+      });
+
+      return;
+    }
+
+    if (!event.target.closest("#musicWidget")) {
+      clearMusicSuggestions();
+    }
+  });
+  const player = document.querySelector(".music-player-shell");
+const playerHeader = document.getElementById("musicPlayerHeader");
+
+playerHeader?.addEventListener("mousedown", (event) => {
+  runtime.playerDragging = true;
+
+  const rect = player.getBoundingClientRect();
+
+  runtime.playerOffsetX = event.clientX - rect.left;
+  runtime.playerOffsetY = event.clientY - rect.top;
+
+  player.style.right = "auto";
+  player.style.bottom = "auto";
+});
+
+document.addEventListener("mousemove", (event) => {
+  if (!runtime.playerDragging) return;
+
+  player.style.left =
+    `${event.clientX - runtime.playerOffsetX}px`;
+
+  player.style.top =
+    `${event.clientY - runtime.playerOffsetY}px`;
+});
+
+document.addEventListener("mouseup", () => {
+  runtime.playerDragging = false;
+});
+}
 /* =========================================================
    CORE UTILITIES
 ========================================================= */
@@ -4375,7 +4687,7 @@ async function initApp() {
   bindEvents();
   initClickEffects();
   applyThemeFromStorage();
-
+  initMusicWidget();
   const isLoggedIn = checkLogin();
 
   if (isLoggedIn) {
