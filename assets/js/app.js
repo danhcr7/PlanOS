@@ -29,6 +29,7 @@ const CONFIG = Object.freeze({
     login: "planosLoggedIn",
     theme: "planosTheme",
     lang: "planosLang",
+    syncMeta: "planosSyncMeta",
   },
 });
 
@@ -445,6 +446,13 @@ const runtime = {
   isCloudSaving: false,
   pendingCloudSave: false,
   lastSaveAt: 0,
+  syncStatus: "idle",
+  dirtyVersion: 0,
+  lastSavedVersion: 0,
+  cloudUpdatedAt: "",
+  lastCloudLoadAt: 0,
+  syncRetryCount: 0,
+  backgroundSyncTimer: null,
   analyticsCache: null,
   analyticsCacheVersion: -1,
 };
@@ -710,16 +718,28 @@ function invalidateAnalytics() {
 
 function commit(mutator, options = {}) {
   const { activity, render = true, cloud = true, toast = "" } = options;
+
   mutator(store.data);
 
-  if (activity) addActivity(activity.action, activity.detail, false);
+  if (activity) {
+    addActivity(activity.action, activity.detail, false);
+  }
 
   invalidateAnalytics();
   saveLocal();
 
-  if (cloud) scheduleCloudSave();
-  if (render) loadPage(runtime.currentPage);
-  if (toast) showToast(toast);
+  if (cloud) {
+    markDirty();
+    scheduleCloudSave();
+  }
+
+  if (render) {
+    loadPage(runtime.currentPage);
+  }
+
+  if (toast) {
+    showToast(toast);
+  }
 }
 
 function addActivity(action, detail, bump = true) {
@@ -738,52 +758,224 @@ function addActivity(action, detail, bump = true) {
 }
 
 /* =========================================================
-   CLOUD SYNC
+   CLOUD SYNC — LOCAL FIRST + AUTO SAVE + RETRY
 ========================================================= */
 
-function scheduleCloudSave() {
+function readSyncMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(CONFIG.storage.syncMeta)) || {};
+  } catch (error) {
+    console.warn("PlanOS sync meta parse error:", error);
+    return {};
+  }
+}
+
+function writeSyncMeta(patch = {}) {
+  const current = readSyncMeta();
+
+  localStorage.setItem(
+    CONFIG.storage.syncMeta,
+    JSON.stringify({
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    }),
+  );
+}
+
+function getCloudDoc(raw) {
+  if (!raw) return null;
+
+  if (raw.data && typeof raw.data === "object") {
+    return {
+      data: raw.data,
+      updatedAt:
+        raw.updatedAt ||
+        raw.updated_at ||
+        raw.data.savedAt ||
+        raw.data.updatedAt ||
+        "",
+    };
+  }
+
+  return {
+    data: raw,
+    updatedAt: raw.savedAt || raw.updatedAt || "",
+  };
+}
+
+function setSyncStatus(status, message = "") {
+  runtime.syncStatus = status;
+
+  if (!dom.cloudSaveBtn || runtime.isCloudSaving) return;
+
+  const labels = {
+    idle: t("save"),
+    pending: "⏳ Pending",
+    saving: "☁ Saving...",
+    saved: "✅ Saved",
+    offline: "📴 Offline",
+    error: "⚠ Retry",
+  };
+
+  dom.cloudSaveBtn.textContent = labels[status] || t("save");
+  dom.cloudSaveBtn.title = message || "";
+}
+
+function markDirty() {
+  runtime.dirtyVersion += 1;
+
+  writeSyncMeta({
+    dirty: true,
+    dirtyVersion: runtime.dirtyVersion,
+    lastLocalChangeAt: new Date().toISOString(),
+  });
+
+  setSyncStatus(navigator.onLine ? "pending" : "offline");
+}
+
+function scheduleCloudSave(delay = CONFIG.saveDelay) {
   clearTimeout(runtime.saveTimer);
-  runtime.saveTimer = setTimeout(() => saveCloud(false), CONFIG.saveDelay);
+
+  if (!navigator.onLine) {
+    setSyncStatus(
+      "offline",
+      "Mất mạng: dữ liệu đã lưu local. Khi online sẽ tự sync.",
+    );
+    return;
+  }
+
+  setSyncStatus("pending");
+
+  runtime.saveTimer = setTimeout(() => {
+    saveCloud(false);
+  }, delay);
+}
+
+function buildCloudPayload() {
+  return {
+    ...store.data,
+    savedAt: new Date().toISOString(),
+    appVersion: "PlanOS-2026",
+    localVersion: runtime.dirtyVersion,
+  };
 }
 
 async function saveCloud(showMessage = false) {
+  if (!navigator.onLine) {
+    setSyncStatus("offline", "Offline: dữ liệu đã lưu local.");
+    if (showMessage) showToast("Đang offline, đã lưu local.");
+    return false;
+  }
+
   if (runtime.isCloudSaving) {
     runtime.pendingCloudSave = true;
-    return;
+    return false;
+  }
+
+  if (runtime.lastSavedVersion === runtime.dirtyVersion && !showMessage) {
+    setSyncStatus("saved");
+    return true;
   }
 
   runtime.isCloudSaving = true;
   runtime.pendingCloudSave = false;
+  runtime.syncStatus = "saving";
+  setSyncStatus("saving");
 
-  if (showMessage) setButtonBusy(dom.cloudSaveBtn, true, t("cloudSaving"));
+  if (showMessage) {
+    setButtonBusy(dom.cloudSaveBtn, true, t("cloudSaving"));
+  }
+
+  const versionToSave = runtime.dirtyVersion;
+  const payload = buildCloudPayload();
 
   try {
-    const payload = {
-      ...store.data,
-      savedAt: new Date().toISOString(),
-      version: Date.now(),
-    };
+    const result = await saveDataToCloud(payload);
 
-    await saveDataToCloud(payload);
+    runtime.lastSavedVersion = versionToSave;
     runtime.lastSaveAt = Date.now();
+    runtime.cloudUpdatedAt = result?.updatedAt || payload.savedAt;
+    runtime.syncRetryCount = 0;
 
-    if (showMessage) showToast(t("cloudSaved"));
+    writeSyncMeta({
+      dirty: false,
+      dirtyVersion: runtime.dirtyVersion,
+      lastSavedVersion: runtime.lastSavedVersion,
+      cloudUpdatedAt: runtime.cloudUpdatedAt,
+      lastSaveAt: runtime.lastSaveAt,
+    });
+
+    setSyncStatus("saved");
+
+    if (showMessage) {
+      showToast(t("cloudSaved"));
+    }
+
+    return true;
   } catch (error) {
-    console.error("Firebase save error:", error);
+    console.error("Supabase save error:", error);
+
     runtime.pendingCloudSave = true;
-    if (showMessage) showToast(t("cloudError"));
+    runtime.syncRetryCount += 1;
+
+    const retryDelay = Math.min(30000, 1000 * 2 ** runtime.syncRetryCount);
+
+    writeSyncMeta({
+      dirty: true,
+      dirtyVersion: runtime.dirtyVersion,
+      lastSaveErrorAt: new Date().toISOString(),
+    });
+
+    setSyncStatus(
+      "error",
+      `Lưu lỗi. Tự thử lại sau ${Math.round(retryDelay / 1000)}s.`,
+    );
+
+    setTimeout(() => {
+      if (runtime.pendingCloudSave) {
+        runtime.pendingCloudSave = false;
+        saveCloud(false);
+      }
+    }, retryDelay);
+
+    if (showMessage) {
+      showToast(t("cloudError"));
+    }
+
+    return false;
   } finally {
     runtime.isCloudSaving = false;
-    if (showMessage) setButtonBusy(dom.cloudSaveBtn, false);
+
+    if (showMessage) {
+      setButtonBusy(dom.cloudSaveBtn, false);
+    }
 
     if (runtime.pendingCloudSave) {
       runtime.pendingCloudSave = false;
-      setTimeout(() => saveCloud(false), 300);
+      scheduleCloudSave(400);
     }
   }
 }
 
-async function loadCloud(showMessage = false) {
+function isCloudNewer(cloudDoc) {
+  if (!cloudDoc?.updatedAt) return false;
+  if (!runtime.cloudUpdatedAt) return true;
+
+  return (
+    new Date(cloudDoc.updatedAt).getTime() >
+    new Date(runtime.cloudUpdatedAt).getTime()
+  );
+}
+
+async function loadCloud(showMessage = false, options = {}) {
+  const { force = false } = options;
+
+  if (!navigator.onLine) {
+    if (showMessage) showToast("Đang offline, không tải được cloud.");
+    return false;
+  }
+
   if (showMessage) {
     setButtonBusy(
       dom.cloudLoadBtn,
@@ -793,46 +985,159 @@ async function loadCloud(showMessage = false) {
   }
 
   try {
-    const data = await loadDataFromCloud();
+    const cloudDoc = getCloudDoc(await loadDataFromCloud());
 
-    if (!data) {
+    if (!cloudDoc?.data) {
       if (showMessage) showToast(t("cloudEmpty"));
       return false;
     }
 
-    store.data = normalizeData(data);
+    const localHasUnsavedChanges =
+      runtime.dirtyVersion !== runtime.lastSavedVersion;
+
+    if (localHasUnsavedChanges && !force) {
+      const ok = confirm(
+        "Bạn đang có dữ liệu local chưa sync. Tải cloud có thể ghi đè dữ liệu hiện tại. Vẫn tải cloud?",
+      );
+
+      if (!ok) return false;
+    }
+
+    store.data = normalizeData(cloudDoc.data);
+    runtime.cloudUpdatedAt = cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
+    runtime.lastCloudLoadAt = Date.now();
+    runtime.dirtyVersion += 1;
+    runtime.lastSavedVersion = runtime.dirtyVersion;
+
+    writeSyncMeta({
+      dirty: false,
+      dirtyVersion: runtime.dirtyVersion,
+      lastSavedVersion: runtime.lastSavedVersion,
+      cloudUpdatedAt: runtime.cloudUpdatedAt,
+      lastCloudLoadAt: runtime.lastCloudLoadAt,
+    });
+
     invalidateAnalytics();
     saveLocal();
     loadPage(runtime.currentPage);
+    setSyncStatus("saved");
 
     if (showMessage) showToast(t("cloudLoaded"));
+
     return true;
   } catch (error) {
-    console.error("Firebase load error:", error);
+    console.error("Supabase load error:", error);
+    setSyncStatus("error", "Tải cloud lỗi.");
     if (showMessage) showToast(t("cloudError"));
     return false;
   } finally {
     if (showMessage) setButtonBusy(dom.cloudLoadBtn, false);
   }
 }
-async function bootFromCloud() {
-  try {
-    const data = await loadDataFromCloud();
 
-    if (data) {
-      store.data = normalizeData(data);
+async function syncFromCloudIfNewer() {
+  if (!navigator.onLine) return false;
+  if (runtime.isCloudSaving) return false;
+
+  const localHasUnsavedChanges =
+    runtime.dirtyVersion !== runtime.lastSavedVersion;
+
+  if (localHasUnsavedChanges) {
+    scheduleCloudSave(300);
+    return false;
+  }
+
+  try {
+    const cloudDoc = getCloudDoc(await loadDataFromCloud());
+
+    if (!cloudDoc?.data) return false;
+
+    if (isCloudNewer(cloudDoc)) {
+      store.data = normalizeData(cloudDoc.data);
+      runtime.cloudUpdatedAt = cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
+      runtime.lastCloudLoadAt = Date.now();
+      runtime.dirtyVersion += 1;
+      runtime.lastSavedVersion = runtime.dirtyVersion;
+
+      writeSyncMeta({
+        dirty: false,
+        dirtyVersion: runtime.dirtyVersion,
+        lastSavedVersion: runtime.lastSavedVersion,
+        cloudUpdatedAt: runtime.cloudUpdatedAt,
+        lastCloudLoadAt: runtime.lastCloudLoadAt,
+      });
+
+      invalidateAnalytics();
       saveLocal();
+      loadPage(runtime.currentPage);
+      setSyncStatus("saved");
+
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.warn("Background cloud sync failed:", error);
+    return false;
+  }
+}
+
+async function bootFromCloud() {
+  const meta = readSyncMeta();
+
+  runtime.cloudUpdatedAt = meta.cloudUpdatedAt || "";
+  runtime.dirtyVersion = Number(meta.dirtyVersion || 0);
+  runtime.lastSavedVersion = Number(meta.lastSavedVersion || 0);
+
+  store.data = loadLocal();
+  invalidateAnalytics();
+  loadPage(runtime.currentPage || "dashboard");
+
+  if (!navigator.onLine) {
+    setSyncStatus("offline", "Offline: đang dùng dữ liệu local.");
+    showToast("Đang offline, dùng dữ liệu local.");
+    return;
+  }
+
+  if (meta.dirty) {
+    setSyncStatus("pending", "Có dữ liệu local chưa sync. Đang đẩy lên cloud.");
+    scheduleCloudSave(300);
+    return;
+  }
+
+  try {
+    const cloudDoc = getCloudDoc(await loadDataFromCloud());
+
+    if (cloudDoc?.data) {
+      store.data = normalizeData(cloudDoc.data);
+      runtime.cloudUpdatedAt = cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
+      runtime.dirtyVersion += 1;
+      runtime.lastSavedVersion = runtime.dirtyVersion;
+
+      writeSyncMeta({
+        dirty: false,
+        dirtyVersion: runtime.dirtyVersion,
+        lastSavedVersion: runtime.lastSavedVersion,
+        cloudUpdatedAt: runtime.cloudUpdatedAt,
+        lastCloudLoadAt: Date.now(),
+      });
+
+      saveLocal();
+      invalidateAnalytics();
+      loadPage(runtime.currentPage || "dashboard");
+      setSyncStatus("saved");
     } else {
-      store.data = normalizeData();
+      markDirty();
+      scheduleCloudSave(300);
     }
   } catch (error) {
     console.error("Supabase boot error:", error);
     store.data = loadLocal();
+    invalidateAnalytics();
+    loadPage(runtime.currentPage || "dashboard");
+    setSyncStatus("error", "Không tải được Supabase, đang dùng cache local.");
     showToast("Không tải được Supabase, đang dùng cache local");
   }
-
-  invalidateAnalytics();
-  loadPage(runtime.currentPage || "dashboard");
 }
 /* =========================================================
    DERIVED DATA / ANALYTICS CACHE
@@ -3653,6 +3958,7 @@ async function handleImport(event) {
     );
     invalidateAnalytics();
     saveLocal();
+    markDirty();
     saveCloud(true);
     loadPage(runtime.currentPage);
     showToast(t("importSuccess"));
@@ -3729,11 +4035,12 @@ function checkKh1BrowserReminders() {
   });
 }
 function manualSave() {
+  markDirty();
   saveCloud(true);
 }
 
 function manualLoad() {
-  loadCloud(true);
+  loadCloud(true, { force: true });
 }
 
 /* =========================================================
@@ -3870,13 +4177,42 @@ function bindEvents() {
   dom.cloudLoadBtn?.addEventListener("click", () => loadCloud(true));
   dom.notifyBtn?.addEventListener("click", requestNotifications);
 
+  window.addEventListener("online", () => {
+    showToast("Đã có mạng lại. Đang sync cloud...");
+    setSyncStatus("pending");
+    scheduleCloudSave(300);
+    syncFromCloudIfNewer();
+  });
+
+  window.addEventListener("offline", () => {
+    setSyncStatus("offline", "Offline: dữ liệu vẫn được lưu local.");
+    showToast("Mất mạng. Dữ liệu vẫn lưu local.");
+  });
+
   window.addEventListener("beforeunload", () => {
     saveLocal();
-    if (runtime.saveTimer) clearTimeout(runtime.saveTimer);
+
+    if (runtime.saveTimer) {
+      clearTimeout(runtime.saveTimer);
+    }
+
+    if (runtime.dirtyVersion !== runtime.lastSavedVersion) {
+      saveCloud(false);
+    }
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") saveLocal();
+    if (document.visibilityState === "hidden") {
+      saveLocal();
+
+      if (runtime.dirtyVersion !== runtime.lastSavedVersion) {
+        saveCloud(false);
+      }
+    }
+
+    if (document.visibilityState === "visible") {
+      syncFromCloudIfNewer();
+    }
   });
 }
 
@@ -3952,6 +4288,10 @@ async function initApp() {
 
   setInterval(checkKh1BrowserReminders, 60 * 1000);
 
+  runtime.backgroundSyncTimer = setInterval(() => {
+    syncFromCloudIfNewer();
+  }, 20 * 1000);
+
   checkKh1BrowserReminders();
 
   setTimeout(notifyDueItems, 1200);
@@ -3983,6 +4323,7 @@ Object.assign(window, {
   filterSavingTransactions,
   setSavingGoal,
   setSavingLock,
+  syncFromCloudIfNewer,
 });
 
 initApp();
