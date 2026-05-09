@@ -903,6 +903,7 @@ function getKh2Stats() {
     yesterdayPassed: streaks.yesterdayPassed,
     streakStatus: streaks.status,
     streakLevel: streaks.level,
+    streakHealth: getKh2StreakHealth(streaks, passRate60),
     streakMessage: streaks.message,
     passRate60,
   };
@@ -1002,7 +1003,19 @@ function getKh2Streaks() {
     message,
   };
 }
+function getKh2StreakHealth(streaks, passRate60) {
+  let score = 0;
 
+  score += Math.min(streaks.current * 4, 40);
+  score += Math.min(streaks.best * 2, 25);
+  score += Math.round(passRate60 * 0.25);
+
+  if (streaks.status === "active") score += 10;
+  if (streaks.status === "at-risk") score -= 12;
+  if (streaks.status === "broken") score -= 20;
+
+  return clamp(score, 0, 100);
+}
 function getKh2PassRate(days = CONFIG.heatmapDays) {
   let pass = 0;
 
@@ -1407,6 +1420,44 @@ function renderMiniMetric(label, value, detail = "") {
         ${detail ? `<p class="muted">${escapeHTML(detail)}</p>` : ""}
       </div>
       <strong>${escapeHTML(String(value))}</strong>
+    </div>
+  `;
+}
+function renderStreakIntelligence(kh2) {
+  const statusClass = `streak-${kh2.streakStatus || "empty"}`;
+
+  return `
+    <div class="streak-card ${statusClass}">
+      <div class="streak-main">
+        <div>
+          <p class="eyebrow">KH2 STREAK ENGINE</p>
+          <h3>🔥 ${kh2.currentStreak} ngày</h3>
+          <p class="muted">${escapeHTML(kh2.streakMessage)}</p>
+        </div>
+
+        <div class="streak-level">
+          <span>${escapeHTML(kh2.streakLevel)}</span>
+        </div>
+      </div>
+
+      <div class="streak-grid">
+        <div>
+          <strong>${kh2.bestStreak}</strong>
+          <span>Best streak</span>
+        </div>
+        <div>
+          <strong>${kh2.passRate60}%</strong>
+          <span>Pass rate</span>
+        </div>
+        <div>
+          <strong>${kh2.missedDays}</strong>
+          <span>Ngày fail</span>
+        </div>
+        <div>
+          <strong>${kh2.lastPassDate ? formatDate(kh2.lastPassDate) : "--"}</strong>
+          <span>PASS gần nhất</span>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2104,13 +2155,13 @@ function renderKh2() {
         <h2>💰 ${t("kh2")}</h2>
         <p>${t("kh2Desc")}</p>
       </div>
-
+      ${renderStreakIntelligence(kh2)}
       <div class="grid grid-4">
         ${statCard(t("passDays"), kh2.passDays, t("passDaysDesc"))}
         ${statCard("🔥 Streak hiện tại", `${kh2.currentStreak} ngày`, kh2.streakLevel)}
 ${statCard("🏆 Best streak", `${kh2.bestStreak} ngày`, "Kỷ lục tốt nhất")}
 ${statCard("📉 Ngày fail", kh2.missedDays, `Trong ${CONFIG.heatmapDays} ngày`)}
-${statCard(t("passRate"), `${kh2.passRate60}%`, `Last ${CONFIG.heatmapDays} days`)}
+${statCard("🧠 Streak Health", `${kh2.streakHealth}/100`, "Độ khỏe thói quen")}
       </div>
 
       <div class="grid grid-4">
