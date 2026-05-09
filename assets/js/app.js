@@ -49,6 +49,12 @@ const DEFAULT_DATA = Object.freeze({
   kh5: [],
   kh6: [],
   kh2Daily: {},
+  personalSaving: {
+    monthlyGoal: 0,
+    lockUntil: "",
+    filter: "all",
+    transactions: [],
+  },
   activityLog: [],
 });
 
@@ -65,6 +71,7 @@ const i18n = {
     kanban: "Kanban",
     insights: "Insights",
     settings: "Công cụ",
+    saving: "Tiết kiệm cá nhân",
 
     kh1Desc: "Môn học, deadline, đồ án, bài tập.",
     kh2Desc: "Theo dõi PASS, rút quỹ, ghi chú từng ngày.",
@@ -72,6 +79,7 @@ const i18n = {
     kh4Desc: "Sách muốn mua, đang đọc, đã đọc.",
     kh5Desc: "Theo dõi kỳ góp laptop.",
     kh6Desc: "Theo dõi các kỳ góp MoMo.",
+    savingDesc: "Quản lý quỹ tiết kiệm riêng: thêm tiền, rút tiền, phân tích và theo dõi dòng tiền.",
 
     search: "Tìm KH, ghi chú, deadline...",
     add: "+ Thêm",
@@ -222,6 +230,7 @@ const i18n = {
     kanban: "Kanban",
     insights: "Insights",
     settings: "Tools",
+    saving: "Personal Saving",
 
     kh1Desc: "Subjects, deadlines, projects and assignments.",
     kh2Desc: "Track PASS days, withdrawals and daily notes.",
@@ -229,6 +238,7 @@ const i18n = {
     kh4Desc: "Books to buy, reading status and wishlist.",
     kh5Desc: "Track laptop installment progress.",
     kh6Desc: "Track MoMo installment payments.",
+    savingDesc: "Manage a separate saving fund with deposits, withdrawals, analytics and cashflow tracking.",
 
     search: "Search plans, notes, deadlines...",
     add: "+ Add",
@@ -380,6 +390,7 @@ const pageInfo = Object.freeze({
   calendar: { icon: "📅", desc: "calendarDesc" },
   kanban: { icon: "🧲", desc: "kanbanDesc" },
   insights: { icon: "📊", desc: "insightsDesc" },
+  saving: { icon: "💵", desc: "savingDesc" },
   settings: { icon: "⚙️", desc: "toolsDesc" },
 });
 
@@ -605,6 +616,23 @@ function normalizeKh2Record(record = {}) {
   };
 }
 
+function normalizeSavingTransaction(tx = {}) {
+  const now = new Date().toISOString();
+
+  return {
+    id: tx.id || uid(),
+    type: tx.type === "withdraw" ? "withdraw" : "deposit",
+    amount: Math.max(0, Number(tx.amount || 0)),
+    date: tx.date || today(),
+    note: tx.note || "",
+    deleted: Boolean(tx.deleted),
+    editedAt: tx.editedAt || "",
+    originalAmount: tx.originalAmount ?? null,
+    createdAt: tx.createdAt || now,
+    updatedAt: tx.updatedAt || now,
+  };
+}
+
 function normalizeData(raw = {}) {
   const safe = { ...DEFAULT_DATA, ...(raw || {}) };
   const normalized = {
@@ -615,6 +643,12 @@ function normalizeData(raw = {}) {
     kh5: [],
     kh6: [],
     kh2Daily: {},
+    personalSaving: {
+      monthlyGoal: 0,
+      lockUntil: "",
+      filter: "all",
+      transactions: [],
+    },
     activityLog: Array.isArray(safe.activityLog) ? safe.activityLog : [],
   };
 
@@ -629,6 +663,17 @@ function normalizeData(raw = {}) {
       ([date, record]) => [date, normalizeKh2Record(record)],
     ),
   );
+
+  const saving = safe.personalSaving || {};
+
+  normalized.personalSaving = {
+    monthlyGoal: Math.max(0, Number(saving.monthlyGoal || 0)),
+    lockUntil: saving.lockUntil || "",
+    filter: saving.filter || "all",
+    transactions: Array.isArray(saving.transactions)
+      ? saving.transactions.map(normalizeSavingTransaction)
+      : [],
+  };
 
   normalized.activityLog = normalized.activityLog
     .filter((log) => log && log.action)
@@ -1675,15 +1720,16 @@ function initKh1TodoForm() {
     const now = new Date().toISOString();
 
     const payload = {
-  id: id || uid(),
-  name,
-  date,
-  time,
-  datetime,
-  status: dom.planStatus.value,
-  note: dom.planNote.value.trim(),
-  updatedAt: now,
-};
+      id: editId.value || uid(),
+      name,
+      date,
+      time,
+      datetime,
+      email,
+      status,
+      note,
+      updatedAt: now,
+    };
 
     commit(
       (data) => {
@@ -2904,16 +2950,15 @@ function handlePlanSubmit(event) {
 
   const now = new Date().toISOString();
   const date = dom.planDate.value;
-const time = dom.planTime?.value || "";
+  const time = dom.planTime?.value || "";
+  const datetime = date && time ? `${date}T${time}` : "";
 
-const datetime =
-  date && time
-    ? `${date}T${time}`
-    : "";
   const payload = {
     id: id || uid(),
     name,
-    date: dom.planDate.value,
+    date,
+    time,
+    datetime,
     status: dom.planStatus.value,
     note: dom.planNote.value.trim(),
     updatedAt: now,
@@ -2946,6 +2991,618 @@ const datetime =
 
   closeModal();
   loadPage(runtime.currentPage);
+}
+
+
+/* =========================================================
+   PERSONAL SAVING MANAGER
+========================================================= */
+
+function getPersonalSavingStats() {
+  const saving = store.data.personalSaving || {
+    monthlyGoal: 0,
+    lockUntil: "",
+    filter: "all",
+    transactions: [],
+  };
+
+  const allTransactions = Array.isArray(saving.transactions)
+    ? saving.transactions
+    : [];
+
+  const activeTransactions = allTransactions.filter((tx) => !tx.deleted);
+
+  const totalDeposit = activeTransactions
+    .filter((tx) => tx.type === "deposit")
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+  const totalWithdraw = activeTransactions
+    .filter((tx) => tx.type === "withdraw")
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+  const balance = totalDeposit - totalWithdraw;
+  const monthKey = today().slice(0, 7);
+
+  const monthTransactions = activeTransactions.filter((tx) =>
+    String(tx.date || "").startsWith(monthKey),
+  );
+
+  const monthDeposit = monthTransactions
+    .filter((tx) => tx.type === "deposit")
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+  const monthWithdraw = monthTransactions
+    .filter((tx) => tx.type === "withdraw")
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+  const monthNet = monthDeposit - monthWithdraw;
+
+  const withdrawRate = totalDeposit > 0
+    ? Math.round((totalWithdraw / totalDeposit) * 100)
+    : 0;
+
+  const goalProgress = saving.monthlyGoal > 0
+    ? clamp(Math.round((monthNet / saving.monthlyGoal) * 100), 0, 100)
+    : 0;
+
+  const isLocked = Boolean(
+    saving.lockUntil &&
+      new Date(`${saving.lockUntil}T23:59:59`).getTime() >= Date.now(),
+  );
+
+  const savingScore = getPersonalSavingScore({
+    balance,
+    monthNet,
+    withdrawRate,
+    goalProgress,
+    transactionCount: activeTransactions.length,
+  });
+
+  const advice = getPersonalSavingAdvice({
+    balance,
+    monthDeposit,
+    monthWithdraw,
+    monthNet,
+    withdrawRate,
+    goalProgress,
+    monthlyGoal: saving.monthlyGoal,
+    isLocked,
+  });
+
+  return {
+    ...saving,
+    transactions: activeTransactions,
+    deletedTransactions: allTransactions.filter((tx) => tx.deleted),
+    totalDeposit,
+    totalWithdraw,
+    balance,
+    monthDeposit,
+    monthWithdraw,
+    monthNet,
+    withdrawRate,
+    goalProgress,
+    savingScore,
+    advice,
+    isLocked,
+  };
+}
+
+function getPersonalSavingScore(stats) {
+  let score = 50;
+
+  if (stats.balance > 0) score += 15;
+  if (stats.monthNet > 0) score += 15;
+  if (stats.goalProgress >= 100) score += 15;
+  else score += Math.round(stats.goalProgress * 0.1);
+
+  if (stats.withdrawRate > 70) score -= 25;
+  else if (stats.withdrawRate > 40) score -= 12;
+
+  if (stats.transactionCount >= 5) score += 5;
+
+  return clamp(score, 0, 100);
+}
+
+function getPersonalSavingAdvice(stats) {
+  if (stats.balance <= 0) {
+    return {
+      type: "warning",
+      title: "Quỹ đang trống",
+      body: "Hãy thêm khoản đầu tiên để bắt đầu theo dõi tiết kiệm.",
+      action: "+ Thêm tiền",
+    };
+  }
+
+  if (stats.withdrawRate >= 70) {
+    return {
+      type: "danger",
+      title: "Tỉ lệ rút đang cao",
+      body: `Bạn đã rút khoảng ${stats.withdrawRate}% so với tổng tiền đã thêm.`,
+      action: "Giảm rút tiền",
+    };
+  }
+
+  if (stats.monthlyGoal > 0 && stats.goalProgress < 50) {
+    return {
+      type: "warning",
+      title: "Mục tiêu tháng còn xa",
+      body: `Bạn mới đạt ${stats.goalProgress}% mục tiêu tháng này.`,
+      action: "Tăng khoản thêm",
+    };
+  }
+
+  if (stats.monthlyGoal > 0 && stats.goalProgress >= 100) {
+    return {
+      type: "good",
+      title: "Đạt mục tiêu tháng",
+      body: "Bạn đã đạt hoặc vượt mục tiêu tiết kiệm tháng này.",
+      action: "Duy trì nhịp này",
+    };
+  }
+
+  return {
+    type: "good",
+    title: "Quỹ đang ổn",
+    body: "Dòng tiền tiết kiệm đang tích cực. Tiếp tục thêm đều để tăng số dư.",
+    action: "Tiếp tục tiết kiệm",
+  };
+}
+
+function renderSaving() {
+  const saving = getPersonalSavingStats();
+  const filtered = getFilteredSavingTransactions();
+
+  setContent(`
+    <div class="grid">
+      <div class="card hero small-hero">
+        <h2>💵 Tiết kiệm cá nhân</h2>
+        <p>Quỹ tiết kiệm riêng: thêm tiền, rút tiền, xem số dư, mục tiêu tháng và phân tích dòng tiền.</p>
+      </div>
+
+      <div class="grid grid-4">
+        ${statCard("💰 Số dư", formatMoney(saving.balance), "Tổng thêm - tổng rút", saving.balance < 0 ? "danger-text" : "success-text")}
+        ${statCard("📥 Tổng đã thêm", formatMoney(saving.totalDeposit), "Tất cả khoản thêm")}
+        ${statCard("📤 Tổng đã rút", formatMoney(saving.totalWithdraw), `Tỉ lệ rút: ${saving.withdrawRate}%`)}
+        ${statCard("🧠 Saving Score", `${saving.savingScore}/100`, "Sức khỏe quỹ")}
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>🎯 Mục tiêu tháng</h3>
+              <p class="muted">Theo dõi tiến độ tiết kiệm trong tháng hiện tại.</p>
+            </div>
+            <span class="badge blue">${saving.goalProgress}%</span>
+          </div>
+
+          <div class="saving-progress">
+            <span style="width:${saving.goalProgress}%"></span>
+          </div>
+
+          <div class="list">
+            ${renderMiniMetric("Mục tiêu", formatMoney(saving.monthlyGoal || 0))}
+            ${renderMiniMetric("Net tháng này", formatMoney(saving.monthNet))}
+            ${renderMiniMetric("Đã thêm tháng này", formatMoney(saving.monthDeposit))}
+            ${renderMiniMetric("Đã rút tháng này", formatMoney(saving.monthWithdraw))}
+          </div>
+
+          <div class="tool-row">
+            <button class="primary-btn" data-action="set-saving-goal">Đặt mục tiêu tháng</button>
+            <button class="ghost-btn" data-action="set-saving-lock">Khóa quỹ</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>🤖 Saving Assistant</h3>
+              <p class="muted">Phân tích tự động từ dòng tiền tiết kiệm.</p>
+            </div>
+          </div>
+
+          ${renderAssistantCard(saving.advice)}
+
+          ${
+            saving.isLocked
+              ? `<p class="muted" style="margin-top:14px">🔒 Quỹ đang khóa đến ${formatDate(saving.lockUntil)}.</p>`
+              : `<p class="muted" style="margin-top:14px">🔓 Quỹ hiện không bị khóa.</p>`
+          }
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h3>⚡ Thao tác nhanh</h3>
+            <p class="muted">Thêm/rút nhanh các khoản thường dùng.</p>
+          </div>
+        </div>
+
+        <div class="quick-saving-actions">
+          <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="10000">+10K</button>
+          <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="20000">+20K</button>
+          <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="50000">+50K</button>
+          <button class="ghost-btn" data-action="quick-saving" data-type="withdraw" data-amount="5000">-5K</button>
+          <button class="ghost-btn" data-action="quick-saving" data-type="withdraw" data-amount="10000">-10K</button>
+        </div>
+      </div>
+
+      <div class="card form-card">
+        <h3>➕ Thêm giao dịch</h3>
+
+        <form id="savingForm">
+          <div class="grid grid-2">
+            <label>
+              Loại giao dịch
+              <select id="savingType">
+                <option value="deposit">Thêm tiền</option>
+                <option value="withdraw">Rút tiền</option>
+              </select>
+            </label>
+
+            <label>
+              Số tiền
+              <input id="savingAmount" type="number" min="1000" step="1000" placeholder="VD: 10000" required />
+            </label>
+          </div>
+
+          <label>
+            Ngày
+            <input id="savingDate" type="date" required />
+          </label>
+
+          <label>
+            Ghi chú
+            <textarea id="savingNote" placeholder="VD: bỏ ống heo, mua nước, tiền dư..."></textarea>
+          </label>
+
+          <div class="modal-actions">
+            <button type="reset" class="ghost-btn">Reset</button>
+            <button type="submit" class="primary-btn">Lưu giao dịch</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h3>🧾 Lịch sử giao dịch</h3>
+            <p class="muted">${filtered.length} giao dịch đang hiển thị.</p>
+          </div>
+
+          <div class="saving-filters">
+            <button class="mini-btn" data-action="filter-saving" data-filter="all">Tất cả</button>
+            <button class="mini-btn" data-action="filter-saving" data-filter="deposit">Thêm</button>
+            <button class="mini-btn" data-action="filter-saving" data-filter="withdraw">Rút</button>
+            <button class="mini-btn" data-action="filter-saving" data-filter="edited">Đã sửa</button>
+            <button class="mini-btn" data-action="filter-saving" data-filter="deleted">Đã xóa mềm</button>
+          </div>
+        </div>
+
+        <div class="list">
+          ${
+            filtered.length
+              ? filtered.map(renderSavingTransaction).join("")
+              : `<p class="muted">Chưa có giao dịch nào.</p>`
+          }
+        </div>
+      </div>
+    </div>
+  `);
+
+  initSavingForm();
+}
+
+function getFilteredSavingTransactions() {
+  const filter = store.data.personalSaving?.filter || "all";
+  const allTransactions = store.data.personalSaving?.transactions || [];
+
+  let list = filter === "deleted"
+    ? allTransactions.filter((tx) => tx.deleted)
+    : allTransactions.filter((tx) => !tx.deleted);
+
+  if (filter === "deposit") list = list.filter((tx) => tx.type === "deposit");
+  if (filter === "withdraw") list = list.filter((tx) => tx.type === "withdraw");
+  if (filter === "edited") list = list.filter((tx) => tx.editedAt);
+
+  return list.sort((a, b) =>
+    String(b.createdAt || "").localeCompare(String(a.createdAt || "")),
+  );
+}
+
+function renderSavingTransaction(tx) {
+  const isDeposit = tx.type === "deposit";
+
+  return `
+    <div class="item saving-transaction ${tx.deleted ? "saving-deleted" : ""}">
+      <div>
+        <strong class="${isDeposit ? "success-text" : "danger-text"}">
+          ${isDeposit ? "+" : "-"}${formatMoney(tx.amount)}
+        </strong>
+
+        <p class="muted">
+          ${isDeposit ? "📥 Thêm tiền" : "📤 Rút tiền"}
+          • ${formatDate(tx.date)}
+          ${tx.note ? " • " + escapeHTML(tx.note) : ""}
+          ${tx.editedAt ? " • Đã sửa" : ""}
+          ${tx.deleted ? " • Đã xóa mềm" : ""}
+        </p>
+      </div>
+
+      <div class="item-actions">
+        ${
+          tx.deleted
+            ? `
+              <button class="mini-btn" data-action="restore-saving-tx" data-id="${escapeAttr(tx.id)}">Khôi phục</button>
+              <button class="mini-btn danger" data-action="hard-delete-saving-tx" data-id="${escapeAttr(tx.id)}">Xóa hẳn</button>
+            `
+            : `
+              <button class="mini-btn" data-action="edit-saving-tx" data-id="${escapeAttr(tx.id)}">Sửa</button>
+              <button class="mini-btn danger" data-action="soft-delete-saving-tx" data-id="${escapeAttr(tx.id)}">Xóa</button>
+            `
+        }
+      </div>
+    </div>
+  `;
+}
+
+function initSavingForm() {
+  const form = $("savingForm");
+  const typeInput = $("savingType");
+  const amountInput = $("savingAmount");
+  const dateInput = $("savingDate");
+  const noteInput = $("savingNote");
+
+  if (!form || !typeInput || !amountInput || !dateInput || !noteInput) return;
+
+  dateInput.value = today();
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    addSavingTransaction({
+      type: typeInput.value,
+      amount: Number(amountInput.value || 0),
+      date: dateInput.value,
+      note: noteInput.value.trim(),
+    });
+
+    form.reset();
+    dateInput.value = today();
+  });
+}
+
+function getSavingBalance() {
+  const transactions = store.data.personalSaving?.transactions || [];
+
+  return transactions
+    .filter((tx) => !tx.deleted)
+    .reduce((balance, tx) => {
+      if (tx.type === "deposit") return balance + Number(tx.amount || 0);
+      return balance - Number(tx.amount || 0);
+    }, 0);
+}
+
+function addSavingTransaction({ type, amount, date = today(), note = "" }) {
+  if (!amount || amount <= 0) {
+    showToast("Số tiền không hợp lệ");
+    return;
+  }
+
+  const balance = getSavingBalance();
+
+  if (type === "withdraw") {
+    const saving = getPersonalSavingStats();
+
+    if (saving.isLocked) {
+      const ok = confirm(`Quỹ đang khóa đến ${formatDate(saving.lockUntil)}. Bạn vẫn muốn rút?`);
+      if (!ok) return;
+    }
+
+    if (amount > balance) {
+      showToast("Không đủ số dư để rút 😭");
+      return;
+    }
+
+    const ok = confirm(`Rút ${formatMoney(amount)} khỏi quỹ tiết kiệm?`);
+    if (!ok) return;
+  }
+
+  const tx = normalizeSavingTransaction({
+    type,
+    amount,
+    date,
+    note,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  commit(
+    (data) => {
+      data.personalSaving.transactions.unshift(tx);
+    },
+    {
+      activity: {
+        action: type === "deposit" ? "Thêm tiền tiết kiệm" : "Rút tiền tiết kiệm",
+        detail: `${formatMoney(amount)} • ${note || formatDate(date)}`,
+      },
+      toast: type === "deposit" ? "Đã thêm tiền ✅" : "Đã rút tiền ✅",
+    },
+  );
+}
+
+function quickSaving(type, amount) {
+  addSavingTransaction({
+    type,
+    amount: Number(amount),
+    date: today(),
+    note: type === "deposit" ? "Thêm nhanh" : "Rút nhanh",
+  });
+}
+
+function editSavingTransaction(id) {
+  const tx = store.data.personalSaving.transactions.find((item) => item.id === id);
+  if (!tx || tx.deleted) return;
+
+  const nextAmount = Number(prompt("Số tiền mới:", tx.amount));
+  if (!nextAmount || nextAmount <= 0) return;
+
+  const nextNote = prompt("Ghi chú mới:", tx.note || "") ?? tx.note;
+
+  if (tx.type === "withdraw") {
+    const balanceWithoutThis = getSavingBalance() + Number(tx.amount || 0);
+
+    if (nextAmount > balanceWithoutThis) {
+      showToast("Không đủ số dư nếu sửa khoản rút này 😭");
+      return;
+    }
+  }
+
+  commit(
+    (data) => {
+      data.personalSaving.transactions = data.personalSaving.transactions.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              originalAmount: item.originalAmount ?? item.amount,
+              amount: nextAmount,
+              note: nextNote.trim(),
+              editedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : item,
+      );
+    },
+    {
+      activity: {
+        action: "Sửa giao dịch tiết kiệm",
+        detail: `${formatMoney(nextAmount)}`,
+      },
+      toast: "Đã sửa giao dịch ✅",
+    },
+  );
+}
+
+function softDeleteSavingTransaction(id) {
+  const tx = store.data.personalSaving.transactions.find((item) => item.id === id);
+  if (!tx) return;
+
+  const ok = confirm("Xóa mềm giao dịch này? Có thể khôi phục sau.");
+  if (!ok) return;
+
+  commit(
+    (data) => {
+      data.personalSaving.transactions = data.personalSaving.transactions.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              deleted: true,
+              updatedAt: new Date().toISOString(),
+            }
+          : item,
+      );
+    },
+    {
+      activity: {
+        action: "Xóa mềm giao dịch tiết kiệm",
+        detail: `${formatMoney(tx.amount)}`,
+      },
+      toast: "Đã xóa mềm giao dịch",
+    },
+  );
+}
+
+function restoreSavingTransaction(id) {
+  commit(
+    (data) => {
+      data.personalSaving.transactions = data.personalSaving.transactions.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              deleted: false,
+              updatedAt: new Date().toISOString(),
+            }
+          : item,
+      );
+    },
+    {
+      activity: {
+        action: "Khôi phục giao dịch tiết kiệm",
+        detail: id,
+      },
+      toast: "Đã khôi phục giao dịch ✅",
+    },
+  );
+}
+
+function hardDeleteSavingTransaction(id) {
+  const ok = confirm("Xóa vĩnh viễn giao dịch này?");
+  if (!ok) return;
+
+  commit(
+    (data) => {
+      data.personalSaving.transactions = data.personalSaving.transactions.filter(
+        (item) => item.id !== id,
+      );
+    },
+    {
+      activity: {
+        action: "Xóa vĩnh viễn giao dịch tiết kiệm",
+        detail: id,
+      },
+      toast: "Đã xóa vĩnh viễn",
+    },
+  );
+}
+
+function filterSavingTransactions(filter) {
+  commit(
+    (data) => {
+      data.personalSaving.filter = filter || "all";
+    },
+    {
+      render: true,
+    },
+  );
+}
+
+function setSavingGoal() {
+  const current = store.data.personalSaving?.monthlyGoal || 0;
+  const value = Number(prompt("Nhập mục tiêu tiết kiệm tháng này:", current));
+
+  if (Number.isNaN(value) || value < 0) return;
+
+  commit(
+    (data) => {
+      data.personalSaving.monthlyGoal = value;
+    },
+    {
+      activity: {
+        action: "Cập nhật mục tiêu tiết kiệm",
+        detail: formatMoney(value),
+      },
+      toast: "Đã cập nhật mục tiêu tháng ✅",
+    },
+  );
+}
+
+function setSavingLock() {
+  const date = prompt("Khóa quỹ đến ngày nào? Nhập dạng YYYY-MM-DD", today());
+  if (!date) return;
+
+  commit(
+    (data) => {
+      data.personalSaving.lockUntil = date;
+    },
+    {
+      activity: {
+        action: "Khóa quỹ tiết kiệm",
+        detail: date,
+      },
+      toast: `Đã khóa quỹ đến ${date}`,
+    },
+  );
 }
 
 /* =========================================================
@@ -3085,9 +3742,11 @@ function manualLoad() {
 
 const pageRenderers = {
   dashboard: renderDashboard,
+  saving: renderSaving,
   calendar: renderCalendar,
   kanban: renderKanban,
   insights: renderInsights,
+  saving: renderSaving,
   settings: renderSettings,
 };
 
@@ -3304,6 +3963,9 @@ Object.assign(window, {
   manualSave,
   manualLoad,
   deleteKh2HistoryDay,
+  renderSaving,
+  addSavingTransaction,
+  quickSaving,
 });
 
 initApp();
