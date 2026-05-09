@@ -2935,3 +2935,106 @@ form {
     font-size: 22px;
   }
 }
+
+.click-fx-dot,
+.click-fx-ring,
+.click-fx-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999999;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.click-fx-dot {
+  width: 12px;
+  height: 12px;
+  animation: clickDot 650ms ease-out forwards;
+}
+
+.click-fx-ring {
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  animation: clickRing 750ms ease-out forwards;
+}
+
+.click-fx-particle {
+  width: 7px;
+  height: 7px;
+  animation: clickParticle 850ms ease-out forwards;
+}
+
+@keyframes clickDot {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(3);
+  }
+}
+
+@keyframes clickRing {
+  from {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(4);
+  }
+}
+
+@keyframes clickParticle {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) scale(0);
+  }
+}
+
+
+/* =========================================================
+   KH2 STREAK ALIGN FIX
+========================================================= */
+
+.kh2-streak-value,
+.streak-value {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  line-height: 1;
+}
+
+.kh2-streak-value strong,
+.streak-value strong {
+  display: flex;
+  align-items: center;
+
+  margin: 0;
+  padding: 0;
+
+  line-height: 1;
+}
+
+.kh2-streak-value .emoji,
+.streak-value .emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transform: translateY(-2px);
+}
+
+.kh2-streak-value {
+  transform: translateY(-3px);
+}

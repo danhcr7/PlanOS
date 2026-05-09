@@ -4274,6 +4274,7 @@ function updateRealTimeClock() {
 
 async function initApp() {
   bindEvents();
+  initClickEffects();
   applyThemeFromStorage();
 
   const isLoggedIn = checkLogin();
@@ -4325,5 +4326,76 @@ Object.assign(window, {
   setSavingLock,
   syncFromCloudIfNewer,
 });
+/* =========================================================
+   GLOBAL CLICK EFFECTS
+========================================================= */
 
+function initClickEffects() {
+  const colors = [
+    "#22d3ee",
+    "#8b5cf6",
+    "#38bdf8",
+    "#f472b6",
+    "#facc15",
+    "#4ade80",
+    "#fb7185",
+  ];
+
+  function randomColor() {
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  function createClickFx(x, y) {
+    const color = randomColor();
+
+    const dot = document.createElement("div");
+    dot.className = "click-fx-dot";
+    dot.style.left = `${x}px`;
+    dot.style.top = `${y}px`;
+    dot.style.background = color;
+    dot.style.boxShadow = `0 0 20px ${color}, 0 0 60px ${color}`;
+    document.body.appendChild(dot);
+
+    const ring = document.createElement("div");
+    ring.className = "click-fx-ring";
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    ring.style.color = color;
+    document.body.appendChild(ring);
+
+    for (let i = 0; i < 12; i += 1) {
+      const particle = document.createElement("div");
+      particle.className = "click-fx-particle";
+
+      const angle = (Math.PI * 2 * i) / 12;
+      const distance = 35 + Math.random() * 55;
+
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
+      particle.style.background = color;
+      particle.style.boxShadow = `0 0 14px ${color}`;
+      particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+      particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+
+      document.body.appendChild(particle);
+
+      setTimeout(() => particle.remove(), 900);
+    }
+
+    setTimeout(() => dot.remove(), 700);
+    setTimeout(() => ring.remove(), 800);
+  }
+
+  document.addEventListener("pointerdown", (event) => {
+    if (
+      event.target.closest("input") ||
+      event.target.closest("textarea") ||
+      event.target.closest("select")
+    ) {
+      return;
+    }
+
+    createClickFx(event.clientX, event.clientY);
+  });
+}
 initApp();
