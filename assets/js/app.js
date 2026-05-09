@@ -896,33 +896,111 @@ function getKh2Stats() {
     balance: totalSaved - totalWithdraw,
     currentStreak: streaks.current,
     bestStreak: streaks.best,
+    missedDays: streaks.missedDays,
+    lastPassDate: streaks.lastPassDate,
+    lastMissDate: streaks.lastMissDate,
+    todayPassed: streaks.todayPassed,
+    yesterdayPassed: streaks.yesterdayPassed,
+    streakStatus: streaks.status,
+    streakLevel: streaks.level,
+    streakMessage: streaks.message,
     passRate60,
   };
 }
 
 function getKh2Streaks() {
   const records = store.data.kh2Daily || {};
+
   let current = 0;
   let best = 0;
   let running = 0;
+  let missedDays = 0;
+  let lastPassDate = "";
+  let lastMissDate = "";
+
+  const todayKey = today();
+  const yesterdayKey = addDays(todayKey, -1);
 
   for (let i = CONFIG.heatmapDays - 1; i >= 0; i--) {
-    const date = addDays(today(), -i);
-    if (records[date]?.saved) {
+    const date = addDays(todayKey, -i);
+    const record = records[date];
+
+    if (record?.saved) {
       running += 1;
       best = Math.max(best, running);
+      lastPassDate = date;
     } else {
+      if (record) {
+        missedDays += 1;
+        lastMissDate = date;
+      }
+
       running = 0;
     }
   }
 
-  for (let i = 0; i < CONFIG.heatmapDays; i++) {
-    const date = addDays(today(), -i);
-    if (records[date]?.saved) current += 1;
-    else break;
+  const todayPassed = Boolean(records[todayKey]?.saved);
+  const yesterdayPassed = Boolean(records[yesterdayKey]?.saved);
+
+  if (todayPassed) {
+    for (let i = 0; i < CONFIG.heatmapDays; i++) {
+      const date = addDays(todayKey, -i);
+
+      if (records[date]?.saved) {
+        current += 1;
+      } else {
+        break;
+      }
+    }
+  } else if (yesterdayPassed) {
+    for (let i = 1; i < CONFIG.heatmapDays; i++) {
+      const date = addDays(todayKey, -i);
+
+      if (records[date]?.saved) {
+        current += 1;
+      } else {
+        break;
+      }
+    }
   }
 
-  return { current, best };
+  let status = "empty";
+  let level = "Starter";
+  let message = "Chưa có streak. Tick PASS hôm nay để bắt đầu.";
+
+  if (current >= 30) {
+    level = "Legend";
+  } else if (current >= 14) {
+    level = "Elite";
+  } else if (current >= 7) {
+    level = "Strong";
+  } else if (current >= 3) {
+    level = "Building";
+  }
+
+  if (todayPassed) {
+    status = "active";
+    message = `Streak đang chạy: ${current} ngày liên tiếp.`;
+  } else if (yesterdayPassed) {
+    status = "at-risk";
+    message = `Streak ${current} ngày đang có nguy cơ mất. Tick PASS hôm nay để giữ chuỗi.`;
+  } else if (lastPassDate) {
+    status = "broken";
+    message = `Streak đã bị ngắt. PASS gần nhất: ${formatDate(lastPassDate)}.`;
+  }
+
+  return {
+    current,
+    best,
+    missedDays,
+    lastPassDate,
+    lastMissDate,
+    todayPassed,
+    yesterdayPassed,
+    status,
+    level,
+    message,
+  };
 }
 
 function getKh2PassRate(days = CONFIG.heatmapDays) {
@@ -1089,9 +1167,12 @@ function getAssistantAdvice() {
 
     if (!todayKh2) {
       advice.push({
-        type: "warning",
-        title: "KH2 hôm nay chưa PASS",
-        body: "Bạn chưa đánh dấu thêm 15.000đ hôm nay. Nếu đã hoàn thành, hãy cập nhật để giữ streak.",
+        type: kh2.streakStatus === "at-risk" ? "danger" : "warning",
+        title:
+          kh2.streakStatus === "at-risk"
+            ? "Streak đang có nguy cơ mất"
+            : "KH2 hôm nay chưa PASS",
+        body: kh2.streakMessage,
         action: "Mở KH2 và tick PASS hôm nay",
       });
     } else {
@@ -1766,7 +1847,7 @@ function renderDashboard() {
             ${renderMiniMetric(
               t("kh2Today"),
               kh2Today ? t("passedToday") : t("notPassedToday"),
-              `${t("currentStreak")}: ${analytics.kh2.currentStreak} ${t("days")}`,
+              analytics.kh2.streakMessage,
             )}
 
           </div>
@@ -2026,9 +2107,10 @@ function renderKh2() {
 
       <div class="grid grid-4">
         ${statCard(t("passDays"), kh2.passDays, t("passDaysDesc"))}
-        ${statCard(t("currentStreak"), kh2.currentStreak, "KH2")}
-        ${statCard(t("bestStreak"), kh2.bestStreak, "KH2")}
-        ${statCard(t("passRate"), `${kh2.passRate60}%`, `Last ${CONFIG.heatmapDays} days`)}
+        ${statCard("🔥 Streak hiện tại", `${kh2.currentStreak} ngày`, kh2.streakLevel)}
+${statCard("🏆 Best streak", `${kh2.bestStreak} ngày`, "Kỷ lục tốt nhất")}
+${statCard("📉 Ngày fail", kh2.missedDays, `Trong ${CONFIG.heatmapDays} ngày`)}
+${statCard(t("passRate"), `${kh2.passRate60}%`, `Last ${CONFIG.heatmapDays} days`)}
       </div>
 
       <div class="grid grid-4">
