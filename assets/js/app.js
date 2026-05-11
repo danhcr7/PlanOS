@@ -778,6 +778,52 @@ document.addEventListener("mouseup", () => {
 /* =========================================================
    CORE UTILITIES
 ========================================================= */
+function getDailyGreeting() {
+  const hour = new Date().getHours();
+
+  let period = "BUỔI SÁNG";
+  let title = "Chào buổi sáng, Danh ✨";
+
+  if (hour >= 5 && hour < 11) {
+    period = "BUỔI SÁNG";
+    title = "Chào buổi sáng, Danh ✨";
+  } else if (hour >= 11 && hour < 13) {
+    period = "BUỔI TRƯA";
+    title = "Chào buổi trưa, Danh ☀️";
+  } else if (hour >= 13 && hour < 18) {
+    period = "BUỔI CHIỀU";
+    title = "Chào buổi chiều, Danh 🌤️";
+  } else if (hour >= 18 && hour < 22) {
+    period = "BUỔI TỐI";
+    title = "Chào buổi tối, Danh 🌙";
+  } else {
+    period = "ĐÊM MUỘN";
+    title = "Đêm rồi, nghỉ ngơi chút nha Danh 🌌";
+  }
+
+  const quotes = [
+    "Một ngày tốt không cần hoàn hảo, chỉ cần bạn tiến thêm một chút.",
+    "Kỷ luật nhỏ mỗi ngày tạo ra phiên bản lớn hơn của chính mình.",
+    "Đừng chờ có động lực rồi mới làm. Hãy làm để tạo ra động lực.",
+    "Việc hôm nay xử lý gọn, tương lai sẽ nhẹ hơn rất nhiều.",
+    "Tập trung vào một việc quan trọng nhất. Xong nó, ngày hôm nay đã thắng.",
+    "Người đi chậm nhưng không dừng lại vẫn luôn tiến xa hơn người bỏ cuộc.",
+    "Mỗi lần bạn mở PlanOS là một lần bạn chọn kiểm soát cuộc sống của mình.",
+    "Không cần hơn ai cả. Chỉ cần tốt hơn chính mình hôm qua.",
+    "Deadline không đáng sợ. Đáng sợ là mình không nhìn thẳng vào nó.",
+    "Tiền nhỏ, thói quen nhỏ, tiến bộ nhỏ — nhưng cộng lại thành thay đổi lớn.",
+    "Một hệ thống tốt sẽ cứu bạn vào những ngày ý chí yếu.",
+    "Hôm nay làm ít cũng được, miễn là đừng bỏ trống hoàn toàn.",
+  ];
+
+  const quoteIndex = Math.floor(Math.random() * quotes.length);
+
+return {
+  period,
+  title,
+  quote: quotes[quoteIndex],
+};
+}
 
 function t(key) {
   return i18n[runtime.currentLang]?.[key] || i18n.vi[key] || key;
@@ -2586,15 +2632,17 @@ function renderDashboard() {
 
   const kh2Today = Boolean(store.data.kh2Daily?.[today()]?.saved);
 
-  setContent(`
+  const greeting = getDailyGreeting();
+
+setContent(`
     <div class="grid">
 
       <div class="card hero">
-        <p class="eyebrow">${t("commandHint")}</p>
+        <p class="eyebrow">${escapeHTML(greeting.period)} • ${t("commandHint")}</p>
 
-        <h2>${t("heroTitle")}</h2>
+        <h2>${escapeHTML(greeting.title)}</h2>
 
-        <p>${t("heroDesc")}</p>
+        <p>${escapeHTML(greeting.quote)}</p>
       </div>
 
       <div class="grid grid-2">

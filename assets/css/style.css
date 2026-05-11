@@ -3869,3 +3869,18 @@ body {
 .music-player-shell.minimized .music-resize-handle {
   display: none;
 }
+
+.hero .eyebrow {
+  color: #67e8f9;
+  text-shadow: 0 0 22px rgba(34,211,238,.18);
+}
+
+.hero h2 {
+  max-width: 980px;
+}
+
+.hero p {
+  max-width: 880px;
+  font-size: 15px;
+  font-weight: 750;
+}
