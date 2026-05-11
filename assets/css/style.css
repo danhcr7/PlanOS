@@ -303,7 +303,7 @@ canvas {
   position: fixed;
   z-index: -5;
   border-radius: 999px;
-  filter: blur(80px);
+  filter: blur(72px);
   opacity: 0.38;
   pointer-events: none;
   will-change: transform;
@@ -511,8 +511,8 @@ canvas {
   border-radius: 38px;
   background: rgba(10, 16, 36, 0.68);
   box-shadow: 0 38px 120px rgba(0, 0, 0, 0.52);
-  backdrop-filter: blur(28px) saturate(150%);
-  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
 }
 
 .login-brand-panel {
@@ -1141,7 +1141,7 @@ body.light .topbar {
 ========================= */
 
 .content {
-  animation: contentIn 360ms var(--ease);
+  animation: contentIn 260ms var(--ease);
 }
 
 .content[aria-busy="true"] {
@@ -3357,7 +3357,7 @@ body {
 
 .bg-orb {
   opacity: 0.28;
-  filter: blur(100px);
+  filter: blur(78px);
 }
 
 .card {
@@ -3524,7 +3524,7 @@ body {
 .hero,
 .item,
 .assistant-card {
-  animation: softReveal 0.42s var(--ease-spring) both;
+  animation: softReveal 280ms var(--ease) both;
 }
 
 @keyframes softReveal {
@@ -3724,8 +3724,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 22px;
   background: rgba(15, 23, 42, 0.97);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(138%);
+  -webkit-backdrop-filter: blur(18px) saturate(138%);
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.44);
 }
 
@@ -4019,9 +4019,25 @@ body {
 }
 
 /* =========================================================
-   14. ULTRA SMOOTH PERFORMANCE PATCH
-   Added for smoother scroll, hover, drag, and rendering.
+   14. PLANOS FINAL STYLE OPTIMIZATION LAYER
+   Structure / performance / modern UI polish
+   Keep this section at the end of style.css.
 ========================================================= */
+
+/* ---------- A. COMPOSITOR + PAINT PERFORMANCE ---------- */
+
+:root {
+  --glass-blur: 14px;
+  --glass-saturate: 130%;
+  --hover-lift: -2px;
+  --main-max-width: 1460px;
+}
+
+.main {
+  width: 100%;
+  max-width: var(--main-max-width);
+  margin-inline: auto;
+}
 
 .card,
 .hero,
@@ -4041,8 +4057,8 @@ body {
 .music-player-shell,
 .toast,
 .modal-box {
-  transform: translateZ(0);
   backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .card,
@@ -4053,8 +4069,6 @@ body {
 .kanban-card,
 .stat-row,
 .assistant-card,
-.music-panel,
-.music-player-shell,
 .modal-box {
   contain: layout paint style;
 }
@@ -4063,69 +4077,23 @@ body {
 .hero,
 .streak-card,
 .kanban-col,
-.saving-card,
-.music-panel {
+.saving-card {
   content-visibility: auto;
   contain-intrinsic-size: 280px;
 }
 
-html,
-body {
-  scroll-behavior: smooth;
-}
-
-body {
-  overscroll-behavior: none;
-}
-
-.content {
-  animation: ultraContentIn 260ms var(--ease) both;
-}
-
-@keyframes ultraContentIn {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-.card,
-.hero,
-.item,
-.assistant-card {
-  animation: ultraSoftReveal 280ms var(--ease) both;
-}
-
-@keyframes ultraSoftReveal {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 10px, 0) scale(0.992);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
-.card:hover,
-.item:hover,
-.mini-note:hover,
-.timeline-item:hover,
-.kanban-card:hover,
-.stat-row:hover,
-.assistant-card:hover {
-  transform: translate3d(0, -2px, 0);
+/* Do NOT contain the music panel; suggestions must escape outside it. */
+.music-panel,
+.music-panel-main {
+  contain: none !important;
+  content-visibility: visible !important;
+  overflow: visible !important;
 }
 
 .bg-orb {
-  will-change: transform, opacity;
+  opacity: .24;
   filter: blur(72px);
+  will-change: transform, opacity;
 }
 
 .noise-layer,
@@ -4134,33 +4102,304 @@ body::after {
   will-change: auto;
 }
 
+/* ---------- B. MODERN COLOR / GLASS SYSTEM ---------- */
+
+body {
+  overscroll-behavior: none;
+  background:
+    radial-gradient(circle at 10% 6%, rgba(139,92,246,.24), transparent 32%),
+    radial-gradient(circle at 92% 14%, rgba(34,211,238,.19), transparent 30%),
+    radial-gradient(circle at 58% 92%, rgba(20,241,201,.11), transparent 36%),
+    linear-gradient(135deg, #020617 0%, #07111f 48%, #030712 100%);
+}
+
+.card,
+.hero,
+.music-panel,
 .sidebar,
 .topbar,
-.music-panel,
+.modal-box {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.card {
+  background:
+    radial-gradient(circle at top right, rgba(34,211,238,.075), transparent 34%),
+    linear-gradient(135deg, rgba(255,255,255,.09), rgba(255,255,255,.038));
+  border-color: rgba(255,255,255,.12);
+  box-shadow:
+    0 22px 72px rgba(0,0,0,.32),
+    inset 0 1px 0 rgba(255,255,255,.075);
+}
+
+.card::before,
+.hero::before,
+.music-panel::before {
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,.07), transparent 42%) !important;
+  opacity: .42 !important;
+}
+
+.hero {
+  border-color: rgba(255,255,255,.18);
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255,255,255,.20), transparent 27%),
+    radial-gradient(circle at 82% 12%, rgba(34,211,238,.28), transparent 29%),
+    linear-gradient(135deg, rgba(139,92,246,.58), rgba(34,211,238,.19));
+}
+
+.hero h2 {
+  text-shadow: 0 12px 44px rgba(0,0,0,.28);
+}
+
+.topbar {
+  border-bottom-color: rgba(255,255,255,.065);
+}
+
+.top-actions {
+  border: 1px solid rgba(255,255,255,.085);
+  border-radius: 26px;
+  background: rgba(255,255,255,.045);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 18px 60px rgba(0,0,0,.18);
+}
+
+.search-input,
+.music-search-input {
+  background-color: rgba(255,255,255,.075);
+}
+
+/* ---------- C. MOTION: FAST, CONSISTENT, LESS JANK ---------- */
+
+.content {
+  animation: contentIn 240ms var(--ease) both;
+}
+
+.card,
+.hero,
+.item,
+.assistant-card {
+  animation: softReveal 260ms var(--ease) both;
+}
+
+.card:hover,
+.hero:hover,
+.item:hover,
+.mini-note:hover,
+.timeline-item:hover,
+.kanban-card:hover,
+.stat-row:hover,
+.assistant-card:hover,
+.music-panel:hover {
+  transform: translate3d(0, var(--hover-lift), 0);
+}
+
+.card:hover {
+  border-color: rgba(255,255,255,.19);
+  box-shadow:
+    0 30px 88px rgba(0,0,0,.38),
+    0 0 30px rgba(34,211,238,.07),
+    inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+.action-btn:hover,
+.primary-btn:hover,
+.ghost-btn:hover,
+.icon-btn:hover,
+.mini-btn:hover {
+  transform: translate3d(0, -2px, 0);
+}
+
+/* ---------- D. MUSIC: SUGGESTIONS + PLAYER CLICK FIX ---------- */
+
+.music-panel {
+  position: relative;
+  z-index: 500 !important;
+}
+
+.music-panel-main {
+  position: relative;
+  z-index: 510 !important;
+}
+
+.music-search-input,
+.music-play-btn {
+  position: relative;
+  z-index: 520;
+}
+
+.music-suggestions {
+  position: absolute !important;
+  top: calc(100% + 12px) !important;
+  left: 0 !important;
+  right: 64px !important;
+  z-index: 99999 !important;
+
+  display: none;
+  max-height: min(380px, 52vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  padding: 10px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,.16);
+
+  background:
+    radial-gradient(circle at top right, rgba(34,211,238,.13), transparent 36%),
+    rgba(15,23,42,.98);
+
+  backdrop-filter: blur(18px) saturate(138%);
+  -webkit-backdrop-filter: blur(18px) saturate(138%);
+
+  box-shadow:
+    0 32px 100px rgba(0,0,0,.55),
+    0 0 38px rgba(34,211,238,.14),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.music-suggestions.show {
+  display: grid !important;
+  gap: 7px;
+}
+
+.music-suggestion-item {
+  position: relative;
+  z-index: 1;
+  min-height: 62px;
+  border: 1px solid transparent;
+}
+
+.music-suggestion-item:hover {
+  border-color: rgba(255,255,255,.10);
+}
+
 .music-player-shell {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
+  will-change: transform, width, height, left, top;
+  max-width: min(720px, calc(100vw - 24px));
+  max-height: min(560px, calc(100vh - 24px));
 }
 
-input,
-select,
-textarea,
-button {
-  -webkit-tap-highlight-color: transparent;
+.music-player-header {
+  position: relative;
+  z-index: 20;
+  user-select: none;
+  touch-action: none;
 }
 
-input,
-select,
-textarea {
-  transition:
-    border-color 180ms var(--ease),
-    box-shadow 180ms var(--ease),
-    background 180ms var(--ease);
+.music-player-actions {
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
 }
+
+.music-player-actions button {
+  position: relative;
+  z-index: 40;
+  pointer-events: auto;
+}
+
+.music-player-shell iframe {
+  position: relative;
+  z-index: 1;
+  display: block;
+}
+
+.music-player-shell.minimized iframe {
+  pointer-events: none;
+}
+
+/* ---------- E. TOOLS PAGE: BALANCED + PREMIUM ---------- */
+
+body[data-page="settings"] .content > .grid,
+.content > .grid:has([data-action="export-data"]) {
+  max-width: 1280px;
+  margin-inline: auto;
+  gap: 22px;
+}
+
+body[data-page="settings"] .content > .grid > .grid-2,
+.content > .grid:has([data-action="export-data"]) > .grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+
+body[data-page="settings"] .content > .grid > .grid-2 > .card,
+.content > .grid:has([data-action="export-data"]) > .grid-2 > .card {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+body[data-page="settings"] .tool-row,
+.content > .grid:has([data-action="export-data"]) .tool-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  gap: 14px;
+  margin-top: auto;
+}
+
+body[data-page="settings"] .tool-row .primary-btn,
+body[data-page="settings"] .tool-row .ghost-btn,
+.content > .grid:has([data-action="export-data"]) .tool-row .primary-btn,
+.content > .grid:has([data-action="export-data"]) .tool-row .ghost-btn {
+  width: 100%;
+  min-height: 52px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 18px;
+}
+
+body[data-page="settings"] .tool-row .ghost-btn,
+.content > .grid:has([data-action="export-data"]) .tool-row .ghost-btn {
+  border: 0;
+  color: white;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.18), transparent 34%),
+    linear-gradient(135deg, var(--primary), var(--primary-2));
+  box-shadow: 0 16px 46px rgba(34,211,238,.18);
+}
+
+/* ---------- F. FINANCIAL OS + LONG TEXT ---------- */
+
+body[data-page="saving"] .content > .grid,
+body[data-page="dashboard"] .content > .grid {
+  max-width: 1420px;
+  margin-inline: auto;
+}
+
+.financial-os .quick-saving-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.financial-os .saving-filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item strong,
+.kanban-card strong,
+.mini-note strong,
+.assistant-content strong,
+.music-suggestion-info strong {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- G. SCROLLBAR ---------- */
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(34, 211, 238, 0.55) rgba(255, 255, 255, 0.06);
+  scrollbar-color: rgba(34,211,238,.55) rgba(255,255,255,.06);
 }
 
 ::-webkit-scrollbar {
@@ -4169,44 +4408,70 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255,255,255,.04);
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 2px solid rgba(3, 7, 18, 0.8);
+  border: 2px solid rgba(3,7,18,.82);
   border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    rgba(139, 92, 246, 0.75),
-    rgba(34, 211, 238, 0.72)
-  );
+  background:
+    linear-gradient(180deg, rgba(139,92,246,.78), rgba(34,211,238,.74));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    180deg,
-    rgba(139, 92, 246, 0.95),
-    rgba(34, 211, 238, 0.92)
-  );
+  background:
+    linear-gradient(180deg, rgba(139,92,246,.95), rgba(34,211,238,.92));
 }
 
-.music-player-header {
-  user-select: none;
-  touch-action: none;
+/* ---------- H. LIGHT MODE POLISH ---------- */
+
+body.light .top-actions {
+  background: rgba(255,255,255,.68);
 }
 
-.music-player-shell {
-  will-change: transform, width, height, left, top;
+body.light .card {
+  border-color: rgba(15,23,42,.09);
+  background:
+    radial-gradient(circle at top right, rgba(34,211,238,.10), transparent 36%),
+    linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,250,252,.78));
+  box-shadow:
+    0 20px 62px rgba(15,23,42,.10),
+    inset 0 1px 0 rgba(255,255,255,.86);
 }
 
-.music-player-shell iframe {
-  display: block;
+/* ---------- I. RESPONSIVE ---------- */
+
+@media (max-width: 1180px) {
+  .app {
+    min-width: 0;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .main {
+    max-width: none;
+  }
 }
 
 @media (max-width: 980px) {
+  body[data-page="settings"] .content > .grid > .grid-2,
+  .content > .grid:has([data-action="export-data"]) > .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .financial-os .quick-saving-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .financial-os .saving-filters {
+    justify-content: flex-start;
+  }
+
   .bg-orb {
-    opacity: 0.16;
-    filter: blur(64px);
+    opacity: .14;
+    filter: blur(58px);
   }
 
   .card,
@@ -4217,6 +4482,40 @@ textarea {
   .modal-box {
     backdrop-filter: blur(10px) saturate(120%);
     -webkit-backdrop-filter: blur(10px) saturate(120%);
+  }
+}
+
+@media (max-width: 760px) {
+  .music-suggestions {
+    left: 0 !important;
+    right: 0 !important;
+    max-height: 46vh;
+  }
+}
+
+@media (max-width: 560px) {
+  body[data-page="settings"] .tool-row,
+  .content > .grid:has([data-action="export-data"]) .tool-row {
+    grid-template-columns: 1fr;
+  }
+
+  .financial-os .quick-saving-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- J. ACCESSIBILITY / REDUCED MOTION ---------- */
+
+@media (hover: none) and (pointer: coarse) {
+  .card:hover,
+  .hero:hover,
+  .item:hover,
+  .music-panel:hover,
+  .action-btn:hover,
+  .primary-btn:hover,
+  .ghost-btn:hover,
+  .mini-btn:hover {
+    transform: none !important;
   }
 }
 
@@ -4238,7 +4537,10 @@ textarea {
   .score-ring,
   .system-dot::after,
   .music-panel-icon,
-  .music-wave span {
+  .music-wave span,
+  .click-fx-dot,
+  .click-fx-ring,
+  .click-fx-particle {
     animation: none !important;
   }
 
@@ -4251,625 +4553,3 @@ textarea {
   }
 }
 
-/* =========================================================
-   TOOLS PAGE TARGETED POLISH
-   Giữ nguyên style.css cũ, chỉ refine tab "Công cụ".
-   Target bằng :has([data-action="export-data"]) nên không ảnh hưởng tab khác.
-========================================================= */
-
-.content > .grid:has([data-action="export-data"]) {
-  max-width: 1280px;
-  margin-inline: auto;
-  gap: 22px;
-}
-
-/* Hero riêng của trang Công cụ */
-.content > .grid:has([data-action="export-data"]) > .hero {
-  min-height: 240px;
-  display: grid;
-  align-content: center;
-  padding: clamp(34px, 4.2vw, 54px);
-  border-radius: 36px;
-  border-color: rgba(255, 255, 255, 0.16);
-  background:
-    radial-gradient(
-      circle at 12% 18%,
-      rgba(255, 255, 255, 0.24),
-      transparent 26%
-    ),
-    radial-gradient(
-      circle at 78% 12%,
-      rgba(34, 211, 238, 0.3),
-      transparent 30%
-    ),
-    radial-gradient(
-      circle at 54% 88%,
-      rgba(139, 92, 246, 0.24),
-      transparent 32%
-    ),
-    linear-gradient(135deg, rgba(139, 92, 246, 0.58), rgba(34, 211, 238, 0.2));
-  box-shadow:
-    0 30px 92px rgba(0, 0, 0, 0.34),
-    0 0 46px rgba(34, 211, 238, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.content > .grid:has([data-action="export-data"]) > .hero::before {
-  opacity: 0.62;
-}
-
-.content > .grid:has([data-action="export-data"]) > .hero::after {
-  opacity: 0.48;
-  filter: blur(22px);
-}
-
-.content > .grid:has([data-action="export-data"]) > .hero h2 {
-  max-width: 900px;
-  margin-bottom: 14px;
-  font-size: clamp(52px, 6vw, 88px);
-  line-height: 0.9;
-  text-shadow: 0 14px 48px rgba(0, 0, 0, 0.28);
-}
-
-.content > .grid:has([data-action="export-data"]) > .hero p {
-  max-width: 760px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 15px;
-  font-weight: 800;
-  line-height: 1.75;
-}
-
-/* Grid card của Công cụ */
-.content > .grid:has([data-action="export-data"]) > .grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-  align-items: stretch;
-}
-
-/* 4 card công cụ */
-.content > .grid:has([data-action="export-data"]) > .grid-2 > .card {
-  min-height: 190px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-  padding: clamp(24px, 2.5vw, 32px);
-  border-radius: 30px;
-  border-color: rgba(255, 255, 255, 0.12);
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(34, 211, 238, 0.12),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.078),
-      rgba(255, 255, 255, 0.034)
-    );
-  box-shadow:
-    0 24px 74px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.075);
-  transition:
-    transform 220ms var(--ease),
-    border-color 220ms var(--ease),
-    box-shadow 220ms var(--ease),
-    background 220ms var(--ease);
-}
-
-.content > .grid:has([data-action="export-data"]) > .grid-2 > .card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 255, 255, 0.2);
-  box-shadow:
-    0 32px 92px rgba(0, 0, 0, 0.38),
-    0 0 34px rgba(34, 211, 238, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.content > .grid:has([data-action="export-data"]) > .grid-2 > .card h3 {
-  margin-bottom: 8px;
-  color: var(--text);
-  font-size: clamp(22px, 2vw, 28px);
-  letter-spacing: -0.045em;
-}
-
-.content > .grid:has([data-action="export-data"]) > .grid-2 > .card p {
-  max-width: 520px;
-  color: color-mix(in srgb, var(--muted) 82%, white 18%);
-  line-height: 1.65;
-}
-
-/* Card Firebase căn nút đẹp hơn */
-.content > .grid:has([data-action="export-data"]) .tool-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-
-  align-items: center;
-  gap: 14px;
-
-  width: 100%;
-  margin-top: auto;
-}
-
-/* Nút trong Công cụ cân nhau */
-.content
-  > .grid:has([data-action="export-data"])
-  > .grid-2
-  > .card
-  > .primary-btn,
-.content > .grid:has([data-action="export-data"]) .tool-row .primary-btn,
-.content > .grid:has([data-action="export-data"]) .tool-row .ghost-btn {
-  width: 100%;
-  min-height: 52px;
-
-  display: inline-grid;
-  place-items: center;
-
-  border-radius: 18px;
-}
-.content > .grid:has([data-action="export-data"]) .tool-row .ghost-btn {
-  border: none;
-
-  background: linear-gradient(135deg, #8b5cf6, #22d3ee);
-
-  color: white;
-
-  box-shadow: 0 12px 30px rgba(34, 211, 238, 0.2);
-}
-.content > .grid:has([data-action="export-data"]) .tool-row .ghost-btn:hover {
-  transform: translateY(-2px) scale(1.03);
-
-  filter: brightness(1.08);
-
-  box-shadow: 0 18px 40px rgba(34, 211, 238, 0.28);
-}
-/* Thêm accent riêng cho từng card bằng data-action */
-.content
-  > .grid:has([data-action="export-data"])
-  .card:has([data-action="export-data"]) {
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(56, 189, 248, 0.17),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.078),
-      rgba(255, 255, 255, 0.034)
-    );
-}
-
-.content
-  > .grid:has([data-action="export-data"])
-  .card:has([data-action="import-data"]) {
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(139, 92, 246, 0.18),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.078),
-      rgba(255, 255, 255, 0.034)
-    );
-}
-
-.content
-  > .grid:has([data-action="export-data"])
-  .card:has([data-action="request-notifications"]) {
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(250, 204, 21, 0.16),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.078),
-      rgba(255, 255, 255, 0.034)
-    );
-}
-
-.content
-  > .grid:has([data-action="export-data"])
-  .card:has([data-action="manual-save"]) {
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(20, 241, 201, 0.16),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.078),
-      rgba(255, 255, 255, 0.034)
-    );
-}
-
-/* Topbar nhìn cân hơn khi đang ở trang Công cụ nhưng không đổi logic app */
-body:has(.content [data-action="export-data"]) .topbar {
-  border-bottom-color: rgba(255, 255, 255, 0.075);
-}
-
-/* Light mode riêng cho Công cụ */
-body.light .content > .grid:has([data-action="export-data"]) > .hero {
-  background:
-    radial-gradient(
-      circle at 12% 18%,
-      rgba(255, 255, 255, 0.72),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at 78% 12%,
-      rgba(34, 211, 238, 0.3),
-      transparent 32%
-    ),
-    linear-gradient(135deg, rgba(139, 92, 246, 0.68), rgba(34, 211, 238, 0.32));
-}
-
-body.light .content > .grid:has([data-action="export-data"]) > .grid-2 > .card {
-  border-color: rgba(15, 23, 42, 0.09);
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(34, 211, 238, 0.12),
-      transparent 38%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.92),
-      rgba(248, 250, 252, 0.78)
-    );
-  box-shadow:
-    0 20px 62px rgba(15, 23, 42, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86);
-}
-
-/* Responsive chỉ cho tab Công cụ */
-@media (max-width: 980px) {
-  .content > .grid:has([data-action="export-data"]) {
-    max-width: none;
-  }
-
-  .content > .grid:has([data-action="export-data"]) > .grid-2 {
-    grid-template-columns: 1fr;
-  }
-
-  .content > .grid:has([data-action="export-data"]) > .hero {
-    min-height: 190px;
-    border-radius: 28px;
-  }
-
-  .content > .grid:has([data-action="export-data"]) > .hero h2 {
-    font-size: clamp(42px, 9vw, 62px);
-  }
-}
-
-@media (max-width: 560px) {
-  .content > .grid:has([data-action="export-data"]) > .hero {
-    padding: 24px;
-    min-height: 165px;
-  }
-
-  .content > .grid:has([data-action="export-data"]) > .grid-2 > .card {
-    min-height: auto;
-    padding: 22px;
-    border-radius: 24px;
-  }
-
-  .content > .grid:has([data-action="export-data"]) .tool-row {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .content > .grid:has([data-action="export-data"]) .tool-row .primary-btn,
-  .content > .grid:has([data-action="export-data"]) .tool-row .ghost-btn,
-  .content
-    > .grid:has([data-action="export-data"])
-    > .grid-2
-    > .card
-    > .primary-btn {
-    width: 100%;
-  }
-}
-
-/* =========================================================
-   FINAL PLANOS AUDIT PATCH
-   Logic/UX polish after full review.
-========================================================= */
-
-/* Page state hooks supplied by app.js */
-body[data-page="settings"] .content > .grid,
-body[data-page="saving"] .content > .grid,
-body[data-page="dashboard"] .content > .grid {
-  max-width: 1420px;
-  margin-inline: auto;
-}
-
-/* Tools tab: balanced action buttons and premium card rhythm */
-body[data-page="settings"] .content > .grid {
-  gap: 22px;
-}
-
-body[data-page="settings"] .content > .grid > .grid-2 {
-  gap: 22px;
-  align-items: stretch;
-}
-
-body[data-page="settings"] .content > .grid > .grid-2 > .card {
-  min-height: 190px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-body[data-page="settings"] .tool-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: 100%;
-  gap: 14px;
-  margin-top: auto;
-}
-
-body[data-page="settings"] .tool-row .primary-btn,
-body[data-page="settings"] .tool-row .ghost-btn {
-  width: 100%;
-  min-height: 52px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 18px;
-}
-
-body[data-page="settings"] .tool-row .ghost-btn {
-  border: 0;
-  color: white;
-  background:
-    linear-gradient(135deg, rgba(255,255,255,.18), transparent 34%),
-    linear-gradient(135deg, var(--primary), var(--primary-2));
-  box-shadow: 0 16px 46px rgba(34, 211, 238, 0.18);
-}
-
-body[data-page="settings"] .tool-row .ghost-btn:hover {
-  filter: brightness(1.08);
-  box-shadow:
-    0 18px 40px rgba(34,211,238,.28),
-    var(--shadow-soft);
-}
-
-/* Remove harsh shine line while keeping glass feel */
-.card::before,
-.hero::before,
-.music-panel::before {
-  background:
-    radial-gradient(
-      circle at top left,
-      rgba(255,255,255,.07),
-      transparent 42%
-    ) !important;
-  opacity: .42 !important;
-}
-
-/* Make draggable player feel smoother and safer */
-.music-player-header {
-  user-select: none;
-  touch-action: none;
-}
-
-.music-player-shell {
-  will-change: transform, width, height, left, top;
-  max-width: min(720px, calc(100vw - 24px));
-  max-height: min(560px, calc(100vh - 24px));
-}
-
-.music-player-shell iframe {
-  display: block;
-}
-
-/* Better empty/loading feel when content rerenders */
-.content[aria-busy="true"] {
-  opacity: .92;
-  filter: saturate(.96);
-}
-
-/* Financial OS controls */
-.financial-os .quick-saving-actions {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.financial-os .saving-filters {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Improve long titles in items */
-.item strong,
-.kanban-card strong,
-.mini-note strong,
-.assistant-content strong {
-  overflow-wrap: anywhere;
-}
-
-/* Smoother hover without huge repaint */
-.card,
-.hero,
-.item,
-.mini-note,
-.timeline-item,
-.kanban-card,
-.stat-row,
-.assistant-card,
-.music-panel {
-  backface-visibility: hidden;
-  transform: translateZ(0);
-}
-
-@media (max-width: 980px) {
-  body[data-page="settings"] .content > .grid > .grid-2 {
-    grid-template-columns: 1fr;
-  }
-
-  .financial-os .quick-saving-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .financial-os .saving-filters {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 560px) {
-  body[data-page="settings"] .tool-row {
-    grid-template-columns: 1fr;
-  }
-
-  .financial-os .quick-saving-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bg-orb,
-  .hero::after,
-  .score-ring,
-  .loading-ring::before,
-  .loading-ring::after,
-  .system-dot::after,
-  .music-panel-icon,
-  .music-wave span {
-    animation: none !important;
-  }
-
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-  }
-}
-
-/* =========================================================
-   MUSIC SUGGESTIONS OVERLAY FIX — FULL
-   Fix dropdown gợi ý bị ẩn/cắt bởi music-panel và contain: paint.
-========================================================= */
-
-/* Chặn contain: paint cắt dropdown. Đây là nguyên nhân chính làm gợi ý bị ẩn. */
-.music-panel,
-.music-panel-main {
-  overflow: visible !important;
-  contain: none !important;
-  content-visibility: visible !important;
-}
-
-/* Đưa cả khối nhạc lên trên hero/card phía dưới. */
-.music-panel {
-  position: relative;
-  z-index: 500 !important;
-}
-
-/* Tạo anchor chuẩn cho dropdown. */
-.music-panel-main {
-  position: relative;
-  z-index: 510 !important;
-}
-
-/* Input nằm dưới dropdown nhưng vẫn nổi trên panel. */
-.music-search-input,
-.music-play-btn {
-  position: relative;
-  z-index: 520;
-}
-
-/* Dropdown gợi ý luôn xổ ra ngoài panel, không bị card/hero che. */
-.music-suggestions {
-  position: absolute !important;
-  top: calc(100% + 12px) !important;
-  left: 0 !important;
-  right: 64px !important;
-
-  z-index: 99999 !important;
-
-  display: none;
-  max-height: min(380px, 52vh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-
-  padding: 10px;
-
-  border-radius: 24px;
-  border: 1px solid rgba(255,255,255,.16);
-
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(34,211,238,.13),
-      transparent 36%
-    ),
-    rgba(15,23,42,.98);
-
-  backdrop-filter: blur(20px) saturate(145%);
-  -webkit-backdrop-filter: blur(20px) saturate(145%);
-
-  box-shadow:
-    0 32px 100px rgba(0,0,0,.55),
-    0 0 38px rgba(34,211,238,.14),
-    inset 0 1px 0 rgba(255,255,255,.08);
-}
-
-.music-suggestions.show {
-  display: grid !important;
-  gap: 7px;
-}
-
-/* Item trong dropdown rõ hơn, dễ click hơn. */
-.music-suggestion-item {
-  position: relative;
-  z-index: 1;
-  min-height: 62px;
-  border: 1px solid transparent;
-}
-
-.music-suggestion-item:hover {
-  border-color: rgba(255,255,255,.10);
-}
-
-/* Khi panel chuyển layout mobile, dropdown chiếm full width. */
-@media (max-width: 760px) {
-  .music-suggestions {
-    left: 0 !important;
-    right: 0 !important;
-    max-height: 46vh;
-  }
-}
-
-.music-player-header {
-  position: relative;
-  z-index: 20;
-}
-
-.music-player-actions {
-  position: relative;
-  z-index: 30;
-  pointer-events: auto;
-}
-
-.music-player-actions button {
-  position: relative;
-  z-index: 40;
-  pointer-events: auto;
-}
-
-.music-player-shell iframe {
-  position: relative;
-  z-index: 1;
-}
-
-.music-player-shell.minimized iframe {
-  pointer-events: none;
-}

@@ -13,6 +13,8 @@ import { saveDataToCloud, loadDataFromCloud } from "./firebase.js";
    - Event delegation instead of many inline-heavy listeners where possible
    - Better keyboard-first UX
    - More modern dashboard intelligence
+   - 2026 audit pass: cached YouTube search, faster saving stats,
+     stronger player controls, safer local saves and less DOM churn.
 ========================================================= */
 
 const CONFIG = Object.freeze({
@@ -482,13 +484,18 @@ const runtime = {
   musicIsPlaying: false,
   musicSearchTimer: null,
   musicSearchController: null,
+  musicSearchCache: new Map(),
+  musicLastQuery: "",
   playerDragging: false,
   playerOffsetX: 0,
   playerOffsetY: 0,
   playerDragFrame: null,
   playerLastX: 0,
   playerLastY: 0,
+  playerPointerId: null,
+  playerResizeObserver: null,
   lastDueNotificationDate: "",
+  lastContentHTML: "",
 };
 
 const store = {
@@ -566,12 +573,23 @@ function renderMusicSuggestions(items = []) {
 
 async function searchMusic(query) {
   const q = query.trim();
+  const normalizedQuery = q.toLowerCase();
 
   if (!q) {
     runtime.musicResults = [];
+    runtime.musicLastQuery = "";
     clearMusicSuggestions();
     return;
   }
+
+  if (runtime.musicSearchCache.has(normalizedQuery)) {
+    const cached = runtime.musicSearchCache.get(normalizedQuery);
+    runtime.musicResults = cached;
+    renderMusicSuggestions(cached);
+    return;
+  }
+
+  runtime.musicLastQuery = normalizedQuery;
 
   if (
     !CONFIG.youtubeApiKey ||
@@ -626,7 +644,7 @@ async function searchMusic(query) {
       throw new Error(message);
     }
 
-    if (runtime.musicQuery.trim() && runtime.musicQuery.trim() !== q) {
+    if (runtime.musicLastQuery && runtime.musicLastQuery !== normalizedQuery) {
       return;
     }
 
@@ -643,6 +661,13 @@ async function searchMusic(query) {
       }));
 
     runtime.musicResults = items;
+    runtime.musicSearchCache.set(normalizedQuery, items);
+
+    if (runtime.musicSearchCache.size > 25) {
+      const oldestKey = runtime.musicSearchCache.keys().next().value;
+      runtime.musicSearchCache.delete(oldestKey);
+    }
+
     renderMusicSuggestions(items);
 
     if (!items.length) {
@@ -721,7 +746,7 @@ function stopMusic() {
     dom.musicPlayerFrame.src = "";
   }
 
-  dom.musicPlayerShell?.classList.remove("show");
+  dom.musicPlayerShell?.classList.remove("show", "minimized");
 
   if (dom.musicPlayBtn) {
     dom.musicPlayBtn.textContent = "▶";
@@ -780,42 +805,54 @@ function clampPlayerToViewport(player) {
 function initMusicWidget() {
   loadSavedMusic();
 
-  const player = document.querySelector(".music-player-shell");
+  const player = dom.musicPlayerShell || document.querySelector(".music-player-shell");
   const playerHeader = document.getElementById("musicPlayerHeader");
+  const musicCloseBtn = document.getElementById("musicCloseBtn");
+  const musicMinBtn = document.getElementById("musicMinBtn");
+  const musicPlayerActions = document.querySelector(".music-player-actions");
 
   restorePlayerState(player);
 
-  const musicCloseBtn = document.getElementById("musicCloseBtn");
-const musicMinBtn = document.getElementById("musicMinBtn");
-const musicPlayerActions = document.querySelector(".music-player-actions");
+  const stopPlayerEvent = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+  };
 
-musicPlayerActions?.addEventListener("pointerdown", (event) => {
-  event.stopPropagation();
-});
+  musicPlayerActions?.addEventListener("pointerdown", stopPlayerEvent, true);
+  musicPlayerActions?.addEventListener("mousedown", stopPlayerEvent, true);
+  musicPlayerActions?.addEventListener("touchstart", stopPlayerEvent, true);
+  musicPlayerActions?.addEventListener(
+    "click",
+    (event) => {
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+    },
+    true,
+  );
 
-musicPlayerActions?.addEventListener("mousedown", (event) => {
-  event.stopPropagation();
-});
+  musicCloseBtn?.addEventListener("pointerdown", stopPlayerEvent, true);
+  musicMinBtn?.addEventListener("pointerdown", stopPlayerEvent, true);
 
-musicPlayerActions?.addEventListener("click", (event) => {
-  event.stopPropagation();
-});
+  musicCloseBtn?.addEventListener(
+    "click",
+    (event) => {
+      stopPlayerEvent(event);
+      stopMusic();
+    },
+    true,
+  );
 
-musicCloseBtn?.addEventListener("click", (event) => {
-  event.preventDefault();
-  event.stopPropagation();
+  musicMinBtn?.addEventListener(
+    "click",
+    (event) => {
+      stopPlayerEvent(event);
 
-  stopMusic();
-});
-
-musicMinBtn?.addEventListener("click", (event) => {
-  event.preventDefault();
-  event.stopPropagation();
-
-  const player = document.querySelector(".music-player-shell");
-
-  player?.classList.toggle("minimized");
-});
+      player?.classList.toggle("minimized");
+      savePlayerState(player);
+    },
+    true,
+  );
 
   dom.musicSearchInput?.addEventListener("input", (event) => {
     const query = event.target.value;
@@ -827,7 +864,7 @@ musicMinBtn?.addEventListener("click", (event) => {
 
     runtime.musicSearchTimer = setTimeout(() => {
       searchMusic(query);
-    }, 360);
+    }, 280);
   });
 
   dom.musicSearchInput?.addEventListener("keydown", async (event) => {
@@ -877,13 +914,46 @@ musicMinBtn?.addEventListener("click", (event) => {
     }
   });
 
+  const movePlayer = throttleRaf(() => {
+    if (!runtime.playerDragging || !player) return;
+
+    const rect = player.getBoundingClientRect();
+    const safeGap = 10;
+
+    const left = clamp(
+      runtime.playerLastX - runtime.playerOffsetX,
+      safeGap,
+      window.innerWidth - rect.width - safeGap,
+    );
+
+    const top = clamp(
+      runtime.playerLastY - runtime.playerOffsetY,
+      safeGap,
+      window.innerHeight - rect.height - safeGap,
+    );
+
+    player.style.left = `${left}px`;
+    player.style.top = `${top}px`;
+    player.style.right = "auto";
+    player.style.bottom = "auto";
+  });
+
   playerHeader?.addEventListener("pointerdown", (event) => {
-    if (event.target.closest(".music-player-actions")) {
-  return;
-}
     if (!player) return;
 
+    if (event.button !== undefined && event.button !== 0) return;
+
+    if (
+      event.target.closest(".music-player-actions") ||
+      event.target.closest("button")
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+
     runtime.playerDragging = true;
+    runtime.playerPointerId = event.pointerId;
 
     const rect = player.getBoundingClientRect();
 
@@ -894,63 +964,65 @@ musicMinBtn?.addEventListener("click", (event) => {
 
     player.style.right = "auto";
     player.style.bottom = "auto";
-    playerHeader.setPointerCapture?.(event.pointerId);
+
+    try {
+      playerHeader.setPointerCapture?.(event.pointerId);
+    } catch {}
   });
 
   document.addEventListener("pointermove", (event) => {
     if (!runtime.playerDragging || !player) return;
 
+    if (
+      runtime.playerPointerId !== null &&
+      event.pointerId !== runtime.playerPointerId
+    ) {
+      return;
+    }
+
     runtime.playerLastX = event.clientX;
     runtime.playerLastY = event.clientY;
 
-    if (runtime.playerDragFrame) return;
-
-    runtime.playerDragFrame = requestAnimationFrame(() => {
-      const rect = player.getBoundingClientRect();
-      const safeGap = 10;
-
-      const left = clamp(
-        runtime.playerLastX - runtime.playerOffsetX,
-        safeGap,
-        window.innerWidth - rect.width - safeGap,
-      );
-
-      const top = clamp(
-        runtime.playerLastY - runtime.playerOffsetY,
-        safeGap,
-        window.innerHeight - rect.height - safeGap,
-      );
-
-      player.style.left = `${left}px`;
-      player.style.top = `${top}px`;
-      player.style.right = "auto";
-      player.style.bottom = "auto";
-      runtime.playerDragFrame = null;
-    });
+    movePlayer();
   });
 
-  document.addEventListener("pointerup", () => {
+  const endDrag = () => {
     if (!runtime.playerDragging) return;
 
     runtime.playerDragging = false;
 
-    if (runtime.playerDragFrame) {
-      cancelAnimationFrame(runtime.playerDragFrame);
-      runtime.playerDragFrame = null;
-    }
+    try {
+      if (runtime.playerPointerId !== null) {
+        playerHeader?.releasePointerCapture?.(runtime.playerPointerId);
+      }
+    } catch {}
+
+    runtime.playerPointerId = null;
 
     clampPlayerToViewport(player);
     savePlayerState(player);
-  });
+  };
+
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", endDrag);
 
   window.addEventListener(
     "resize",
     debounce(() => {
       clampPlayerToViewport(player);
       savePlayerState(player);
-    }, 180),
+    }, 160),
   );
+
+  if ("ResizeObserver" in window && player) {
+    runtime.playerResizeObserver = new ResizeObserver(
+      debounce(() => savePlayerState(player), 250),
+    );
+
+    runtime.playerResizeObserver.observe(player);
+  }
 }
+
 /* =========================================================
    CORE UTILITIES
 ========================================================= */
@@ -1087,10 +1159,40 @@ function isWithinLastDays(isoString, days = 7) {
 
 function debounce(fn, delay) {
   let timer = null;
-  return (...args) => {
+
+  const debounced = (...args) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), delay);
   };
+
+  debounced.cancel = () => clearTimeout(timer);
+
+  return debounced;
+}
+
+function throttleRaf(fn) {
+  let frame = null;
+  let lastArgs = null;
+
+  return (...args) => {
+    lastArgs = args;
+
+    if (frame) return;
+
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      fn(...lastArgs);
+    });
+  };
+}
+
+function scheduleIdle(fn, timeout = 900) {
+  if ("requestIdleCallback" in window) {
+    requestIdleCallback(fn, { timeout });
+    return;
+  }
+
+  setTimeout(fn, 0);
 }
 
 function nextFrame(fn) {
@@ -1115,7 +1217,9 @@ function setButtonBusy(button, isBusy, labelWhenBusy) {
   if (!button) return;
 
   if (isBusy) {
-    button.dataset.oldText = button.textContent;
+    if (!button.dataset.oldText) {
+      button.dataset.oldText = button.textContent;
+    }
     button.textContent = labelWhenBusy;
     button.disabled = true;
     button.setAttribute("aria-busy", "true");
@@ -1124,6 +1228,7 @@ function setButtonBusy(button, isBusy, labelWhenBusy) {
   }
 
   button.textContent = button.dataset.oldText || button.textContent;
+  delete button.dataset.oldText;
   button.disabled = false;
   button.removeAttribute("aria-busy");
   button.style.opacity = "";
@@ -1142,6 +1247,13 @@ function showToast(message) {
 
 function setContent(html) {
   if (!dom.content) return;
+
+  if (runtime.lastContentHTML === html) {
+    dom.content.removeAttribute("aria-busy");
+    return;
+  }
+
+  runtime.lastContentHTML = html;
   dom.content.setAttribute("aria-busy", "true");
   dom.content.innerHTML = html;
   nextFrame(() => dom.content?.removeAttribute("aria-busy"));
@@ -1224,7 +1336,12 @@ function normalizeData(raw = {}) {
     personalSaving: {
       monthlyGoal: 0,
       lockUntil: "",
+      noSpendUntil: "",
+      noSpendReason: "",
       filter: "all",
+      subscriptions: [],
+      missionLog: {},
+      achievements: {},
       transactions: [],
     },
     activityLog: Array.isArray(safe.activityLog) ? safe.activityLog : [],
@@ -1296,7 +1413,14 @@ function loadLocal() {
 }
 
 function saveLocal() {
-  localStorage.setItem(CONFIG.storage.data, JSON.stringify(store.data));
+  scheduleIdle(() => {
+    try {
+      localStorage.setItem(CONFIG.storage.data, JSON.stringify(store.data));
+    } catch (error) {
+      console.error("PlanOS local save failed:", error);
+      showToast("Không lưu được local storage 😭");
+    }
+  });
 }
 
 function invalidateAnalytics() {
@@ -3721,7 +3845,14 @@ function deleteKh2HistoryDay(date) {
 function openAddModal(
   type = runtime.currentPage === "dashboard" ? "kh1" : runtime.currentPage,
 ) {
-  if (!GROUPS.includes(type)) type = "kh1";
+  if (!GROUPS.includes(type)) {
+    if (runtime.currentPage === "saving") {
+      showToast("Mở form Tiết kiệm cá nhân bên dưới để thêm giao dịch.");
+      return;
+    }
+
+    type = "kh1";
+  }
 
   dom.editId.value = "";
   dom.modalMode.textContent = t("modalNew");
@@ -4100,34 +4231,71 @@ function getPersonalSavingStats() {
     transactions: [],
   };
 
-  const allTransactions = Array.isArray(saving.transactions) ? saving.transactions : [];
-  const activeTransactions = allTransactions.filter((tx) => !tx.deleted);
+  const allTransactions = Array.isArray(saving.transactions)
+    ? saving.transactions
+    : [];
+
+  const activeTransactions = [];
+  const deletedTransactions = [];
   const monthKey = getMonthKey();
   const monthDays = getMonthDays(monthKey);
   const currentDay = Number(today().slice(8, 10));
-  const monthTransactions = activeTransactions.filter((tx) => String(tx.date || "").startsWith(monthKey));
 
-  const totalDeposit = activeTransactions
-    .filter((tx) => tx.type === "deposit")
-    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  let totalDeposit = 0;
+  let totalWithdraw = 0;
+  let monthDeposit = 0;
+  let monthWithdraw = 0;
+  let lastWithdraw = null;
 
-  const totalWithdraw = activeTransactions
-    .filter((tx) => tx.type === "withdraw")
-    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  const categoryTotals = {};
 
-  const monthDeposit = monthTransactions
-    .filter((tx) => tx.type === "deposit")
-    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+  for (const tx of allTransactions) {
+    if (tx.deleted) {
+      deletedTransactions.push(tx);
+      continue;
+    }
 
-  const monthWithdraw = monthTransactions
-    .filter((tx) => tx.type === "withdraw")
-    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    activeTransactions.push(tx);
+
+    const amount = Number(tx.amount || 0);
+    const type = tx.type === "withdraw" ? "withdraw" : "deposit";
+    const isMonth = String(tx.date || "").startsWith(monthKey);
+
+    if (type === "deposit") {
+      totalDeposit += amount;
+      if (isMonth) monthDeposit += amount;
+    } else {
+      totalWithdraw += amount;
+      if (isMonth) monthWithdraw += amount;
+
+      if (
+        !lastWithdraw ||
+        String(tx.date || "").localeCompare(String(lastWithdraw.date || "")) > 0
+      ) {
+        lastWithdraw = tx;
+      }
+    }
+
+    const key = tx.category || inferSavingCategory(tx.note, type);
+
+    if (!categoryTotals[key]) {
+      categoryTotals[key] = { deposit: 0, withdraw: 0, count: 0 };
+    }
+
+    categoryTotals[key][type] += amount;
+    categoryTotals[key].count += 1;
+  }
 
   const balance = totalDeposit - totalWithdraw;
   const monthNet = monthDeposit - monthWithdraw;
-  const withdrawRate = totalDeposit > 0 ? Math.round((totalWithdraw / totalDeposit) * 100) : 0;
-  const goalProgress = saving.monthlyGoal > 0 ? clamp(Math.round((monthNet / saving.monthlyGoal) * 100), 0, 150) : 0;
-  const monthProjectedNet = currentDay > 0 ? Math.round((monthNet / currentDay) * monthDays) : monthNet;
+  const withdrawRate =
+    totalDeposit > 0 ? Math.round((totalWithdraw / totalDeposit) * 100) : 0;
+  const goalProgress =
+    saving.monthlyGoal > 0
+      ? clamp(Math.round((monthNet / saving.monthlyGoal) * 100), 0, 150)
+      : 0;
+  const monthProjectedNet =
+    currentDay > 0 ? Math.round((monthNet / currentDay) * monthDays) : monthNet;
 
   const isLocked = Boolean(
     saving.lockUntil &&
@@ -4139,53 +4307,78 @@ function getPersonalSavingStats() {
       new Date(`${saving.noSpendUntil}T23:59:59`).getTime() >= Date.now(),
   );
 
-  const dailyAverageWithdraw = currentDay > 0 ? Math.round(monthWithdraw / currentDay) : 0;
-  const burnDaysLeft = dailyAverageWithdraw > 0 ? Math.floor(balance / dailyAverageWithdraw) : 999;
+  const dailyAverageWithdraw =
+    currentDay > 0 ? Math.round(monthWithdraw / currentDay) : 0;
+  const burnDaysLeft =
+    dailyAverageWithdraw > 0 ? Math.floor(balance / dailyAverageWithdraw) : 999;
+
   const targetDailyNeed =
     saving.monthlyGoal > 0
-      ? Math.max(0, Math.ceil((saving.monthlyGoal - monthNet) / Math.max(1, monthDays - currentDay + 1)))
+      ? Math.max(
+          0,
+          Math.ceil(
+            (saving.monthlyGoal - monthNet) /
+              Math.max(1, monthDays - currentDay + 1),
+          ),
+        )
       : 0;
 
-  const lastWithdraw = activeTransactions
-    .filter((tx) => tx.type === "withdraw")
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))[0];
+  const daysSinceWithdraw = lastWithdraw
+    ? Math.max(0, daysBetween(lastWithdraw.date) * -1)
+    : 999;
 
-  const daysSinceWithdraw = lastWithdraw ? Math.max(0, daysBetween(lastWithdraw.date) * -1) : 999;
   const mission = getCurrentDailyMission();
   const missionDoneToday = Boolean(saving.missionLog?.[today()]?.[mission.id]);
 
-  const categoryTotals = activeTransactions.reduce((map, tx) => {
-    const key = tx.category || inferSavingCategory(tx.note, tx.type);
-    if (!map[key]) map[key] = { deposit: 0, withdraw: 0, count: 0 };
-    map[key][tx.type] += Number(tx.amount || 0);
-    map[key].count += 1;
-    return map;
-  }, {});
+  const topSpendingCategory =
+    Object.entries(categoryTotals)
+      .map(([name, item]) => ({ name, ...item }))
+      .sort((a, b) => b.withdraw - a.withdraw)[0] || {
+      name: "None",
+      withdraw: 0,
+      deposit: 0,
+      count: 0,
+    };
 
-  const topSpendingCategory = Object.entries(categoryTotals)
-    .map(([name, item]) => ({ name, ...item }))
-    .sort((a, b) => b.withdraw - a.withdraw)[0] || { name: "None", withdraw: 0, deposit: 0, count: 0 };
+  const subscriptions = Array.isArray(saving.subscriptions)
+    ? saving.subscriptions.filter((sub) => sub.active !== false)
+    : [];
 
-  const subscriptions = Array.isArray(saving.subscriptions) ? saving.subscriptions.filter((sub) => sub.active !== false) : [];
-  const monthlySubscriptions = subscriptions.reduce((sum, sub) => sum + Number(sub.amount || 0), 0);
+  const monthlySubscriptions = subscriptions.reduce(
+    (sum, sub) => sum + Number(sub.amount || 0),
+    0,
+  );
+
   const nextSubscription = subscriptions
     .map((sub) => {
-      const dueDate = `${monthKey}-${String(clamp(Number(sub.dueDay || 1), 1, monthDays)).padStart(2, "0")}`;
+      const dueDate = `${monthKey}-${String(
+        clamp(Number(sub.dueDay || 1), 1, monthDays),
+      ).padStart(2, "0")}`;
+
       let left = daysBetween(dueDate);
       let displayDate = dueDate;
+
       if (left < 0) {
         const next = addDays(dueDate, monthDays);
         left = daysBetween(next);
         displayDate = next;
       }
+
       return { ...sub, left, displayDate };
     })
     .sort((a, b) => a.left - b.left)[0];
 
-  const simulation90Days = Math.max(0, Math.round(balance + (monthNet / Math.max(1, currentDay)) * 90));
+  const simulation90Days = Math.max(
+    0,
+    Math.round(balance + (monthNet / Math.max(1, currentDay)) * 90),
+  );
+
   const daysToGoal =
     saving.monthlyGoal > 0 && monthNet > 0
-      ? Math.ceil(Math.max(0, saving.monthlyGoal - monthNet) / Math.max(1, monthNet / Math.max(1, currentDay)))
+      ? Math.ceil(
+          Math.max(0, saving.monthlyGoal - monthNet) /
+            Math.max(1, monthNet / Math.max(1, currentDay)),
+        )
       : null;
 
   const financialMood = getFinancialMood({
@@ -4232,12 +4425,10 @@ function getPersonalSavingStats() {
     missionDoneToday,
   });
 
-  const unlockedAchievements = achievements.filter((item) => item.unlocked).length;
-
   return {
     ...saving,
     transactions: activeTransactions,
-    deletedTransactions: allTransactions.filter((tx) => tx.deleted),
+    deletedTransactions,
     totalDeposit,
     totalWithdraw,
     balance,
@@ -4266,7 +4457,7 @@ function getPersonalSavingStats() {
     mission,
     missionDoneToday,
     achievements,
-    unlockedAchievements,
+    unlockedAchievements: achievements.filter((item) => item.unlocked).length,
   };
 }
 
