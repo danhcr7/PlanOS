@@ -9,6 +9,7 @@
     />
     <title>PlanOS</title>
     <meta name="theme-color" content="#030712" />
+    <meta name="color-scheme" content="dark light" />
     <link rel="icon" href="data:," />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -51,8 +52,8 @@
               <span>Heatmap</span>
             </div>
             <div>
-              <strong>AI</strong>
-              <span>Assistant ready</span>
+              <strong>Finance</strong>
+              <span>OS ready</span>
             </div>
           </div>
         </div>
@@ -217,14 +218,12 @@
           </div>
 
           <div class="top-actions">
-  
-
-  <input
-    id="globalSearch"
-    class="search-input"
-    type="search"
-    placeholder="Tìm KH, ghi chú, deadline..."
-  />
+            <input
+              id="globalSearch"
+              class="search-input"
+              type="search"
+              placeholder="Tìm KH, ghi chú, deadline..."
+            />
             <button class="action-btn compact-btn" id="langBtn">VI</button>
             <button class="action-btn compact-btn" id="notifyBtn">🔔</button>
             <button class="action-btn compact-btn" id="themeBtn">🌙</button>
@@ -243,34 +242,34 @@
           </div>
         </header>
 
-<div class="music-panel" id="musicWidget">
-  <div class="music-panel-left">
-    <div class="music-panel-icon">♪</div>
+        <div class="music-panel" id="musicWidget">
+          <div class="music-panel-left">
+            <div class="music-panel-icon">♪</div>
 
-    <div>
-      <p class="eyebrow">PLANOS MUSIC</p>
-      <h3>Nhạc nền làm việc</h3>
-    </div>
-  </div>
+            <div>
+              <p class="eyebrow">PLANOS MUSIC</p>
+              <h3>Nhạc nền làm việc</h3>
+            </div>
+          </div>
 
-  <div class="music-panel-main">
-    <input
-      id="musicSearchInput"
-      class="music-search-input"
-      type="search"
-      placeholder="Nhập tên bài hát bạn thích..."
-      autocomplete="off"
-    />
+          <div class="music-panel-main">
+            <input
+              id="musicSearchInput"
+              class="music-search-input"
+              type="search"
+              placeholder="Nhập tên bài hát bạn thích..."
+              autocomplete="off"
+            />
 
-    <button class="music-play-btn" id="musicPlayBtn" type="button">
-      ▶
-    </button>
+            <button class="music-play-btn" id="musicPlayBtn" type="button">
+              ▶
+            </button>
 
-    <div class="music-suggestions" id="musicSuggestions"></div>
-  </div>
-</div>
+            <div class="music-suggestions" id="musicSuggestions"></div>
+          </div>
+        </div>
 
-<section id="content" class="content"></section>
+        <section id="content" class="content"></section>
       </main>
     </div>
 
@@ -341,59 +340,28 @@
     </div>
 
     <input id="importFileInput" type="file" accept="application/json" hidden />
-<div id="toast" class="toast">Done</div>
+    <div id="toast" class="toast">Done</div>
 
-<div class="music-player-shell">
+    <div class="music-player-shell">
+      <div class="music-player-header" id="musicPlayerHeader">
+        <span>🎵 PlanOS Player</span>
 
-  <div class="music-player-header" id="musicPlayerHeader">
-    <span>🎵 PlanOS Player</span>
+        <div class="music-player-actions">
+          <button id="musicMinBtn">—</button>
+          <button id="musicCloseBtn">✕</button>
+        </div>
+      </div>
 
-    <div class="music-player-actions">
-      <button id="musicMinBtn">—</button>
-      <button id="musicCloseBtn">✕</button>
+      <iframe
+        id="musicPlayerFrame"
+        title="PlanOS Music Player"
+        allow="autoplay; encrypted-media"
+        allowfullscreen
+      ></iframe>
+
+      <div class="music-resize-handle" id="musicResizeHandle"></div>
     </div>
-  </div>
 
-  <iframe
-    id="musicPlayerFrame"
-    title="PlanOS Music Player"
-    allow="autoplay; encrypted-media"
-    allowfullscreen
-  ></iframe>
-
-  <div class="music-resize-handle" id="musicResizeHandle"></div>
-
-</div>
-
-<script type="module" src="./assets/js/app.js"></script>
+    <script type="module" src="./assets/js/app.js"></script>
   </body>
 </html>
-
-
-<!-- KH2 SMART TOPUP UI -->
-
-<div class="form-group">
-  <label class="label">
-    💸 Bù quỹ thông minh
-  </label>
-
-  <p class="muted">
-    Nhập tiền dư để tự động bù các ngày chưa PASS.
-  </p>
-
-  <div class="smart-topup-row">
-    <input
-      type="number"
-      id="kh2TopupAmount"
-      class="input"
-      placeholder="Ví dụ: 30000"
-    />
-
-    <button
-      class="primary-btn"
-      data-action="kh2-smart-topup"
-    >
-      Bù tự động
-    </button>
-  </div>
-</div>

@@ -25,15 +25,15 @@ const CONFIG = Object.freeze({
   searchDelay: 160,
   loadingDuration: 1600,
 
-youtubeApiKey: "AIzaSyCHH7kNKZRreseLYOt4Civ4qCbVfcPcWBE",
+  youtubeApiKey: "AIzaSyCHH7kNKZRreseLYOt4Civ4qCbVfcPcWBE",
 
-storage: {
+  storage: {
     data: "planosData",
     login: "planosLoggedIn",
     theme: "planosTheme",
     lang: "planosLang",
     syncMeta: "planosSyncMeta",
-music: "planosMusic",
+    music: "planosMusic",
   },
 });
 
@@ -84,7 +84,8 @@ const i18n = {
     kh4Desc: "Sách muốn mua, đang đọc, đã đọc.",
     kh5Desc: "Theo dõi kỳ góp laptop.",
     kh6Desc: "Theo dõi các kỳ góp MoMo.",
-    savingDesc: "Quản lý quỹ tiết kiệm riêng: thêm tiền, rút tiền, phân tích và theo dõi dòng tiền.",
+    savingDesc:
+      "Quản lý quỹ tiết kiệm riêng: thêm tiền, rút tiền, phân tích và theo dõi dòng tiền.",
 
     search: "Tìm KH, ghi chú, deadline...",
     add: "+ Thêm",
@@ -243,7 +244,8 @@ const i18n = {
     kh4Desc: "Books to buy, reading status and wishlist.",
     kh5Desc: "Track laptop installment progress.",
     kh6Desc: "Track MoMo installment payments.",
-    savingDesc: "Manage a separate saving fund with deposits, withdrawals, analytics and cashflow tracking.",
+    savingDesc:
+      "Manage a separate saving fund with deposits, withdrawals, analytics and cashflow tracking.",
 
     search: "Search plans, notes, deadlines...",
     add: "+ Add",
@@ -436,13 +438,13 @@ const dom = {
   logoutBtn: $("logoutBtn"),
   langBtn: $("langBtn"),
   app: $("app"),
-loadingScreen: $("loadingScreen"),
+  loadingScreen: $("loadingScreen"),
 
-musicSearchInput: $("musicSearchInput"),
-musicPlayBtn: $("musicPlayBtn"),
-musicSuggestions: $("musicSuggestions"),
-musicPlayerFrame: $("musicPlayerFrame"),
-musicPlayerShell: document.querySelector(".music-player-shell"),
+  musicSearchInput: $("musicSearchInput"),
+  musicPlayBtn: $("musicPlayBtn"),
+  musicSuggestions: $("musicSuggestions"),
+  musicPlayerFrame: $("musicPlayerFrame"),
+  musicPlayerShell: document.querySelector(".music-player-shell"),
 };
 
 const runtime = {
@@ -465,16 +467,16 @@ const runtime = {
   backgroundSyncTimer: null,
   clickEffectsReady: false,
   analyticsCache: null,
-analyticsCacheVersion: -1,
+  analyticsCacheVersion: -1,
 
-musicQuery: "",
-musicResults: [],
-musicSelected: null,
-musicIsPlaying: false,
-musicSearchTimer: null,
-playerDragging: false,
-playerOffsetX: 0,
-playerOffsetY: 0,
+  musicQuery: "",
+  musicResults: [],
+  musicSelected: null,
+  musicIsPlaying: false,
+  musicSearchTimer: null,
+  playerDragging: false,
+  playerOffsetX: 0,
+  playerOffsetY: 0,
 };
 
 const store = {
@@ -657,16 +659,14 @@ function playSelectedMusic() {
 
   if (!runtime.musicIsPlaying) {
     const src =
-  `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` +
-  `?autoplay=1&controls=1&rel=0&modestbranding=1`;
+      `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` +
+      `?autoplay=1&controls=1&rel=0&modestbranding=1`;
 
     dom.musicPlayerFrame.src = src;
     dom.musicPlayerShell?.classList.add("show");
 
     runtime.musicIsPlaying = true;
-    document
-  .querySelector(".music-panel")
-  ?.classList.add("playing");
+    document.querySelector(".music-panel")?.classList.add("playing");
     if (dom.musicPlayBtn) {
       dom.musicPlayBtn.textContent = "⏸";
     }
@@ -679,9 +679,7 @@ function playSelectedMusic() {
 
 function stopMusic() {
   runtime.musicIsPlaying = false;
-  document
-  .querySelector(".music-panel")
-  ?.classList.remove("playing");
+  document.querySelector(".music-panel")?.classList.remove("playing");
   if (dom.musicPlayerFrame) {
     dom.musicPlayerFrame.src = "";
   }
@@ -696,14 +694,10 @@ function stopMusic() {
 function initMusicWidget() {
   loadSavedMusic();
   document
-  .getElementById("musicCloseBtn")
-  ?.addEventListener("click", stopMusic);
-  document
-  .getElementById("musicMinBtn")
-  ?.addEventListener("click", () => {
-
-    const player =
-      document.querySelector(".music-player-shell");
+    .getElementById("musicCloseBtn")
+    ?.addEventListener("click", stopMusic);
+  document.getElementById("musicMinBtn")?.addEventListener("click", () => {
+    const player = document.querySelector(".music-player-shell");
 
     player.classList.toggle("minimized");
   });
@@ -747,33 +741,31 @@ function initMusicWidget() {
     }
   });
   const player = document.querySelector(".music-player-shell");
-const playerHeader = document.getElementById("musicPlayerHeader");
+  const playerHeader = document.getElementById("musicPlayerHeader");
 
-playerHeader?.addEventListener("mousedown", (event) => {
-  runtime.playerDragging = true;
+  playerHeader?.addEventListener("mousedown", (event) => {
+    runtime.playerDragging = true;
 
-  const rect = player.getBoundingClientRect();
+    const rect = player.getBoundingClientRect();
 
-  runtime.playerOffsetX = event.clientX - rect.left;
-  runtime.playerOffsetY = event.clientY - rect.top;
+    runtime.playerOffsetX = event.clientX - rect.left;
+    runtime.playerOffsetY = event.clientY - rect.top;
 
-  player.style.right = "auto";
-  player.style.bottom = "auto";
-});
+    player.style.right = "auto";
+    player.style.bottom = "auto";
+  });
 
-document.addEventListener("mousemove", (event) => {
-  if (!runtime.playerDragging) return;
+  document.addEventListener("mousemove", (event) => {
+    if (!runtime.playerDragging) return;
 
-  player.style.left =
-    `${event.clientX - runtime.playerOffsetX}px`;
+    player.style.left = `${event.clientX - runtime.playerOffsetX}px`;
 
-  player.style.top =
-    `${event.clientY - runtime.playerOffsetY}px`;
-});
+    player.style.top = `${event.clientY - runtime.playerOffsetY}px`;
+  });
 
-document.addEventListener("mouseup", () => {
-  runtime.playerDragging = false;
-});
+  document.addEventListener("mouseup", () => {
+    runtime.playerDragging = false;
+  });
 }
 /* =========================================================
    CORE UTILITIES
@@ -818,11 +810,11 @@ function getDailyGreeting() {
 
   const quoteIndex = Math.floor(Math.random() * quotes.length);
 
-return {
-  period,
-  title,
-  quote: quotes[quoteIndex],
-};
+  return {
+    period,
+    title,
+    quote: quotes[quoteIndex],
+  };
 }
 
 function t(key) {
@@ -991,13 +983,17 @@ function normalizeKh2Record(record = {}) {
 
 function normalizeSavingTransaction(tx = {}) {
   const now = new Date().toISOString();
+  const note = tx.note || "";
 
   return {
     id: tx.id || uid(),
     type: tx.type === "withdraw" ? "withdraw" : "deposit",
     amount: Math.max(0, Number(tx.amount || 0)),
     date: tx.date || today(),
-    note: tx.note || "",
+    note,
+    category: tx.category || inferSavingCategory(note, tx.type),
+    mood: tx.mood || inferSavingMood(note, tx.type, Number(tx.amount || 0)),
+    merchant: tx.merchant || "",
     deleted: Boolean(tx.deleted),
     editedAt: tx.editedAt || "",
     originalAmount: tx.originalAmount ?? null,
@@ -1042,7 +1038,25 @@ function normalizeData(raw = {}) {
   normalized.personalSaving = {
     monthlyGoal: Math.max(0, Number(saving.monthlyGoal || 0)),
     lockUntil: saving.lockUntil || "",
+    noSpendUntil: saving.noSpendUntil || "",
+    noSpendReason: saving.noSpendReason || "",
     filter: saving.filter || "all",
+    subscriptions: Array.isArray(saving.subscriptions)
+      ? saving.subscriptions
+          .filter((sub) => sub && sub.name)
+          .map((sub) => ({
+            id: sub.id || uid(),
+            name: String(sub.name || "").trim(),
+            amount: Math.max(0, Number(sub.amount || 0)),
+            dueDay: clamp(Number(sub.dueDay || 1), 1, 31),
+            note: sub.note || "",
+            active: sub.active !== false,
+            createdAt: sub.createdAt || new Date().toISOString(),
+            updatedAt: sub.updatedAt || new Date().toISOString(),
+          }))
+      : [],
+    missionLog: saving.missionLog || {},
+    achievements: saving.achievements || {},
     transactions: Array.isArray(saving.transactions)
       ? saving.transactions.map(normalizeSavingTransaction)
       : [],
@@ -1420,7 +1434,8 @@ async function syncFromCloudIfNewer() {
 
     if (isCloudNewer(cloudDoc)) {
       store.data = normalizeData(cloudDoc.data);
-      runtime.cloudUpdatedAt = cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
+      runtime.cloudUpdatedAt =
+        cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
       runtime.lastCloudLoadAt = Date.now();
       runtime.dirtyVersion += 1;
       runtime.lastSavedVersion = runtime.dirtyVersion;
@@ -1476,7 +1491,8 @@ async function bootFromCloud() {
 
     if (cloudDoc?.data) {
       store.data = normalizeData(cloudDoc.data);
-      runtime.cloudUpdatedAt = cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
+      runtime.cloudUpdatedAt =
+        cloudDoc.updatedAt || cloudDoc.data.savedAt || "";
       runtime.dirtyVersion += 1;
       runtime.lastSavedVersion = runtime.dirtyVersion;
 
@@ -2634,7 +2650,7 @@ function renderDashboard() {
 
   const greeting = getDailyGreeting();
 
-setContent(`
+  setContent(`
     <div class="grid">
 
       <div class="card hero">
@@ -3505,8 +3521,8 @@ function openAddModal(
   dom.planName.value = "";
   dom.planDate.value = "";
   if (dom.planTime) {
-  dom.planTime.value = "";
-}
+    dom.planTime.value = "";
+  }
   dom.planStatus.value = STATUS.todo;
   dom.planNote.value = "";
 
@@ -3525,8 +3541,8 @@ function openEditModal(type, id) {
   dom.planName.value = item.name || "";
   dom.planDate.value = item.date || "";
   if (dom.planTime) {
-  dom.planTime.value = item.time || "";
-}
+    dom.planTime.value = item.time || "";
+  }
   dom.planStatus.value = item.status || STATUS.todo;
   dom.planNote.value = item.note || "";
 
@@ -3635,16 +3651,12 @@ function moveItem(type, id, status) {
   );
 }
 function toggleKh6Paid(id) {
-  const item = store.data.kh6.find(
-    (payment) => payment.id === id,
-  );
+  const item = store.data.kh6.find((payment) => payment.id === id);
 
   if (!item) return;
 
   if (!item.paid) {
-    const ok = confirm(
-      `Đã thanh toán kỳ "${item.name}" chưa?`,
-    );
+    const ok = confirm(`Đã thanh toán kỳ "${item.name}" chưa?`);
 
     if (!ok) {
       loadPage(runtime.currentPage);
@@ -3664,24 +3676,18 @@ function toggleKh6Paid(id) {
         return {
           ...payment,
           paid: newPaidState,
-          status: newPaidState
-            ? STATUS.done
-            : STATUS.todo,
+          status: newPaidState ? STATUS.done : STATUS.todo,
           updatedAt: new Date().toISOString(),
         };
       });
     },
     {
       activity: {
-        action: item.paid
-          ? "Bỏ thanh toán KH6"
-          : "Thanh toán KH6",
+        action: item.paid ? "Bỏ thanh toán KH6" : "Thanh toán KH6",
         detail: item.name,
       },
 
-      toast: item.paid
-        ? "Đã bỏ đánh dấu thanh toán"
-        : "Đã thanh toán ✅",
+      toast: item.paid ? "Đã bỏ đánh dấu thanh toán" : "Đã thanh toán ✅",
     },
   );
 
@@ -3741,24 +3747,156 @@ function handlePlanSubmit(event) {
   loadPage(runtime.currentPage);
 }
 
-
 /* =========================================================
-   PERSONAL SAVING MANAGER
+   PERSONAL SAVING MANAGER — FINANCIAL OS UPGRADE
 ========================================================= */
+
+function inferSavingCategory(note = "", type = "deposit") {
+  const text = String(note || "").toLowerCase();
+
+  if (type === "deposit") {
+    if (/lương|salary|thưởng|bonus|income|tiền dư|bỏ ống|save|tiết kiệm/.test(text)) return "Income";
+    return "Saving";
+  }
+
+  if (/ăn|cơm|trà sữa|cafe|coffee|lẩu|food|drink|nước/.test(text)) return "Food";
+  if (/momo|trả góp|bill|hóa đơn|netflix|spotify|domain|hosting|subscription/.test(text)) return "Bills";
+  if (/xe|grab|xăng|bus|transport|taxi/.test(text)) return "Transport";
+  if (/sách|khóa học|học|course|book/.test(text)) return "Learning";
+  if (/game|phim|giải trí|movie|entertainment/.test(text)) return "Entertainment";
+  if (/khẩn|bệnh|thuốc|sửa|emergency/.test(text)) return "Emergency";
+  if (/laptop|pc|đồ công nghệ|tech/.test(text)) return "Tech";
+
+  return "Other";
+}
+
+function inferSavingMood(note = "", type = "deposit", amount = 0) {
+  const text = String(note || "").toLowerCase();
+
+  if (type === "deposit") return amount >= 50000 ? "disciplined" : "steady";
+  if (/buồn|stress|chán|mệt|bốc đồng|tự thưởng/.test(text)) return "emotional";
+  if (/cần|bắt buộc|deadline|trả góp|hóa đơn|bill/.test(text)) return "necessary";
+  if (amount >= 100000) return "high-impact";
+
+  return "normal";
+}
+
+function getMonthKey(dateString = today()) {
+  return String(dateString || today()).slice(0, 7);
+}
+
+function getMonthDays(monthKey = getMonthKey()) {
+  const [year, month] = monthKey.split("-").map(Number);
+  return new Date(year, month, 0).getDate();
+}
+
+function getActiveSavingTransactions() {
+  return (store.data.personalSaving?.transactions || []).filter((tx) => !tx.deleted);
+}
+
+function getCurrentDailyMission() {
+  const missions = [
+    {
+      id: "no-food-delivery",
+      title: "Không order đồ ăn hôm nay",
+      desc: "Giữ ví an toàn bằng cách tránh một khoản chi cảm xúc.",
+      reward: "+5 Saving Score",
+    },
+    {
+      id: "save-20k",
+      title: "Save tối thiểu 20K",
+      desc: "Một khoản nhỏ nhưng giúp giữ nhịp kỷ luật.",
+      reward: "+1 Mission Streak",
+    },
+    {
+      id: "review-spending",
+      title: "Review 3 khoản chi gần nhất",
+      desc: "Nhìn thẳng vào dòng tiền để kiểm soát nó.",
+      reward: "+Insight",
+    },
+    {
+      id: "no-spend-evening",
+      title: "Không tiêu sau 22:00",
+      desc: "Chặn chi tiêu bốc đồng vào cuối ngày.",
+      reward: "+Discipline",
+    },
+    {
+      id: "cut-coffee",
+      title: "Cắt một khoản đồ uống",
+      desc: "Giảm 1 ly hôm nay, tăng tự do tài chính ngày mai.",
+      reward: "+Cashflow",
+    },
+  ];
+
+  const seed = today()
+    .split("")
+    .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return missions[seed % missions.length];
+}
+
+function getFinancialAchievements(stats) {
+  const rules = [
+    {
+      id: "first-save",
+      icon: "🌱",
+      title: "Khoản tiết kiệm đầu tiên",
+      unlocked: stats.totalDeposit > 0,
+    },
+    {
+      id: "one-million",
+      icon: "💎",
+      title: "Chạm mốc 1 triệu",
+      unlocked: stats.balance >= 1000000,
+    },
+    {
+      id: "five-million",
+      icon: "🏦",
+      title: "Vault 5 triệu",
+      unlocked: stats.balance >= 5000000,
+    },
+    {
+      id: "goal-crusher",
+      icon: "🎯",
+      title: "Vượt mục tiêu tháng",
+      unlocked: stats.monthlyGoal > 0 && stats.goalProgress >= 100,
+    },
+    {
+      id: "no-withdraw-week",
+      icon: "🛡️",
+      title: "7 ngày không rút",
+      unlocked: stats.daysSinceWithdraw >= 7,
+    },
+    {
+      id: "mission-complete",
+      icon: "⚡",
+      title: "Hoàn thành mission hôm nay",
+      unlocked: Boolean(stats.missionDoneToday),
+    },
+  ];
+
+  return rules;
+}
 
 function getPersonalSavingStats() {
   const saving = store.data.personalSaving || {
     monthlyGoal: 0,
     lockUntil: "",
+    noSpendUntil: "",
+    noSpendReason: "",
     filter: "all",
+    subscriptions: [],
+    missionLog: {},
+    achievements: {},
     transactions: [],
   };
 
-  const allTransactions = Array.isArray(saving.transactions)
-    ? saving.transactions
-    : [];
-
+  const allTransactions = Array.isArray(saving.transactions) ? saving.transactions : [];
   const activeTransactions = allTransactions.filter((tx) => !tx.deleted);
+  const monthKey = getMonthKey();
+  const monthDays = getMonthDays(monthKey);
+  const currentDay = Number(today().slice(8, 10));
+  const monthTransactions = activeTransactions.filter((tx) => String(tx.date || "").startsWith(monthKey));
 
   const totalDeposit = activeTransactions
     .filter((tx) => tx.type === "deposit")
@@ -3768,13 +3906,6 @@ function getPersonalSavingStats() {
     .filter((tx) => tx.type === "withdraw")
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
-  const balance = totalDeposit - totalWithdraw;
-  const monthKey = today().slice(0, 7);
-
-  const monthTransactions = activeTransactions.filter((tx) =>
-    String(tx.date || "").startsWith(monthKey),
-  );
-
   const monthDeposit = monthTransactions
     .filter((tx) => tx.type === "deposit")
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
@@ -3783,20 +3914,79 @@ function getPersonalSavingStats() {
     .filter((tx) => tx.type === "withdraw")
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
+  const balance = totalDeposit - totalWithdraw;
   const monthNet = monthDeposit - monthWithdraw;
-
-  const withdrawRate = totalDeposit > 0
-    ? Math.round((totalWithdraw / totalDeposit) * 100)
-    : 0;
-
-  const goalProgress = saving.monthlyGoal > 0
-    ? clamp(Math.round((monthNet / saving.monthlyGoal) * 100), 0, 100)
-    : 0;
+  const withdrawRate = totalDeposit > 0 ? Math.round((totalWithdraw / totalDeposit) * 100) : 0;
+  const goalProgress = saving.monthlyGoal > 0 ? clamp(Math.round((monthNet / saving.monthlyGoal) * 100), 0, 150) : 0;
+  const monthProjectedNet = currentDay > 0 ? Math.round((monthNet / currentDay) * monthDays) : monthNet;
 
   const isLocked = Boolean(
     saving.lockUntil &&
       new Date(`${saving.lockUntil}T23:59:59`).getTime() >= Date.now(),
   );
+
+  const noSpendActive = Boolean(
+    saving.noSpendUntil &&
+      new Date(`${saving.noSpendUntil}T23:59:59`).getTime() >= Date.now(),
+  );
+
+  const dailyAverageWithdraw = currentDay > 0 ? Math.round(monthWithdraw / currentDay) : 0;
+  const burnDaysLeft = dailyAverageWithdraw > 0 ? Math.floor(balance / dailyAverageWithdraw) : 999;
+  const targetDailyNeed =
+    saving.monthlyGoal > 0
+      ? Math.max(0, Math.ceil((saving.monthlyGoal - monthNet) / Math.max(1, monthDays - currentDay + 1)))
+      : 0;
+
+  const lastWithdraw = activeTransactions
+    .filter((tx) => tx.type === "withdraw")
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))[0];
+
+  const daysSinceWithdraw = lastWithdraw ? Math.max(0, daysBetween(lastWithdraw.date) * -1) : 999;
+  const mission = getCurrentDailyMission();
+  const missionDoneToday = Boolean(saving.missionLog?.[today()]?.[mission.id]);
+
+  const categoryTotals = activeTransactions.reduce((map, tx) => {
+    const key = tx.category || inferSavingCategory(tx.note, tx.type);
+    if (!map[key]) map[key] = { deposit: 0, withdraw: 0, count: 0 };
+    map[key][tx.type] += Number(tx.amount || 0);
+    map[key].count += 1;
+    return map;
+  }, {});
+
+  const topSpendingCategory = Object.entries(categoryTotals)
+    .map(([name, item]) => ({ name, ...item }))
+    .sort((a, b) => b.withdraw - a.withdraw)[0] || { name: "None", withdraw: 0, deposit: 0, count: 0 };
+
+  const subscriptions = Array.isArray(saving.subscriptions) ? saving.subscriptions.filter((sub) => sub.active !== false) : [];
+  const monthlySubscriptions = subscriptions.reduce((sum, sub) => sum + Number(sub.amount || 0), 0);
+  const nextSubscription = subscriptions
+    .map((sub) => {
+      const dueDate = `${monthKey}-${String(clamp(Number(sub.dueDay || 1), 1, monthDays)).padStart(2, "0")}`;
+      let left = daysBetween(dueDate);
+      let displayDate = dueDate;
+      if (left < 0) {
+        const next = addDays(dueDate, monthDays);
+        left = daysBetween(next);
+        displayDate = next;
+      }
+      return { ...sub, left, displayDate };
+    })
+    .sort((a, b) => a.left - b.left)[0];
+
+  const simulation90Days = Math.max(0, Math.round(balance + (monthNet / Math.max(1, currentDay)) * 90));
+  const daysToGoal =
+    saving.monthlyGoal > 0 && monthNet > 0
+      ? Math.ceil(Math.max(0, saving.monthlyGoal - monthNet) / Math.max(1, monthNet / Math.max(1, currentDay)))
+      : null;
+
+  const financialMood = getFinancialMood({
+    balance,
+    monthNet,
+    withdrawRate,
+    goalProgress,
+    noSpendActive,
+    burnDaysLeft,
+  });
 
   const savingScore = getPersonalSavingScore({
     balance,
@@ -3804,6 +3994,9 @@ function getPersonalSavingStats() {
     withdrawRate,
     goalProgress,
     transactionCount: activeTransactions.length,
+    noSpendActive,
+    missionDoneToday,
+    daysSinceWithdraw,
   });
 
   const advice = getPersonalSavingAdvice({
@@ -3815,7 +4008,22 @@ function getPersonalSavingStats() {
     goalProgress,
     monthlyGoal: saving.monthlyGoal,
     isLocked,
+    noSpendActive,
+    burnDaysLeft,
+    topSpendingCategory,
+    targetDailyNeed,
   });
+
+  const achievements = getFinancialAchievements({
+    balance,
+    totalDeposit,
+    monthlyGoal: saving.monthlyGoal,
+    goalProgress,
+    daysSinceWithdraw,
+    missionDoneToday,
+  });
+
+  const unlockedAchievements = achievements.filter((item) => item.unlocked).length;
 
   return {
     ...saving,
@@ -3827,26 +4035,57 @@ function getPersonalSavingStats() {
     monthDeposit,
     monthWithdraw,
     monthNet,
+    monthProjectedNet,
+    monthKey,
     withdrawRate,
     goalProgress,
     savingScore,
     advice,
     isLocked,
+    noSpendActive,
+    dailyAverageWithdraw,
+    burnDaysLeft,
+    targetDailyNeed,
+    categoryTotals,
+    topSpendingCategory,
+    subscriptions,
+    monthlySubscriptions,
+    nextSubscription,
+    simulation90Days,
+    daysToGoal,
+    financialMood,
+    mission,
+    missionDoneToday,
+    achievements,
+    unlockedAchievements,
   };
 }
 
+function getFinancialMood(stats) {
+  if (stats.noSpendActive) return { label: "No-Spend Mode", className: "danger", icon: "🥷" };
+  if (stats.balance <= 0 || stats.burnDaysLeft <= 7) return { label: "Danger Zone", className: "danger", icon: "🚨" };
+  if (stats.withdrawRate >= 60 || stats.monthNet < 0) return { label: "Recovering", className: "warning", icon: "🛠️" };
+  if (stats.goalProgress >= 100) return { label: "Goal Crusher", className: "good", icon: "🏆" };
+  if (stats.monthNet > 0) return { label: "Stable Growth", className: "good", icon: "📈" };
+  return { label: "Neutral", className: "info", icon: "🧭" };
+}
+
 function getPersonalSavingScore(stats) {
-  let score = 50;
+  let score = 42;
 
-  if (stats.balance > 0) score += 15;
-  if (stats.monthNet > 0) score += 15;
-  if (stats.goalProgress >= 100) score += 15;
-  else score += Math.round(stats.goalProgress * 0.1);
+  if (stats.balance > 0) score += 12;
+  if (stats.monthNet > 0) score += 14;
+  if (stats.goalProgress >= 100) score += 18;
+  else score += Math.round(Math.min(stats.goalProgress, 100) * 0.13);
 
-  if (stats.withdrawRate > 70) score -= 25;
-  else if (stats.withdrawRate > 40) score -= 12;
+  if (stats.withdrawRate > 80) score -= 28;
+  else if (stats.withdrawRate > 55) score -= 18;
+  else if (stats.withdrawRate > 35) score -= 8;
 
-  if (stats.transactionCount >= 5) score += 5;
+  if (stats.transactionCount >= 5) score += 4;
+  if (stats.noSpendActive) score += 6;
+  if (stats.missionDoneToday) score += 5;
+  if (stats.daysSinceWithdraw >= 7) score += 6;
 
   return clamp(score, 0, 100);
 }
@@ -3856,8 +4095,17 @@ function getPersonalSavingAdvice(stats) {
     return {
       type: "warning",
       title: "Quỹ đang trống",
-      body: "Hãy thêm khoản đầu tiên để bắt đầu theo dõi tiết kiệm.",
+      body: "Hãy thêm khoản đầu tiên để kích hoạt Financial OS.",
       action: "+ Thêm tiền",
+    };
+  }
+
+  if (stats.burnDaysLeft <= 7) {
+    return {
+      type: "danger",
+      title: "Burn-rate nguy hiểm",
+      body: `Nếu giữ tốc độ rút hiện tại, quỹ có thể cạn trong khoảng ${stats.burnDaysLeft} ngày.`,
+      action: "Bật No-Spend Mode",
     };
   }
 
@@ -3865,8 +4113,8 @@ function getPersonalSavingAdvice(stats) {
     return {
       type: "danger",
       title: "Tỉ lệ rút đang cao",
-      body: `Bạn đã rút khoảng ${stats.withdrawRate}% so với tổng tiền đã thêm.`,
-      action: "Giảm rút tiền",
+      body: `Bạn đã rút khoảng ${stats.withdrawRate}% so với tổng tiền đã thêm. Nhóm chi mạnh nhất: ${stats.topSpendingCategory.name}.`,
+      action: "Giảm khoản chi cảm xúc",
     };
   }
 
@@ -3874,26 +4122,232 @@ function getPersonalSavingAdvice(stats) {
     return {
       type: "warning",
       title: "Mục tiêu tháng còn xa",
-      body: `Bạn mới đạt ${stats.goalProgress}% mục tiêu tháng này.`,
-      action: "Tăng khoản thêm",
+      body: `Bạn cần khoảng ${formatMoney(stats.targetDailyNeed)}/ngày để kịp mục tiêu tháng.`,
+      action: "Tăng khoản thêm hằng ngày",
     };
   }
 
   if (stats.monthlyGoal > 0 && stats.goalProgress >= 100) {
     return {
       type: "good",
-      title: "Đạt mục tiêu tháng",
-      body: "Bạn đã đạt hoặc vượt mục tiêu tiết kiệm tháng này.",
-      action: "Duy trì nhịp này",
+      title: "Đã phá đảo mục tiêu tháng",
+      body: "Bạn đã đạt hoặc vượt mục tiêu tiết kiệm tháng này. Có thể tăng cấp vault.",
+      action: "Nâng mục tiêu tiếp theo",
     };
   }
 
   return {
     type: "good",
     title: "Quỹ đang ổn",
-    body: "Dòng tiền tiết kiệm đang tích cực. Tiếp tục thêm đều để tăng số dư.",
+    body: "Dòng tiền tiết kiệm đang tích cực. Tiếp tục giữ nhịp và hoàn thành daily mission.",
     action: "Tiếp tục tiết kiệm",
   };
+}
+
+function renderFinancialHeatmap() {
+  const records = {};
+  getActiveSavingTransactions().forEach((tx) => {
+    const date = tx.date || today();
+    if (!records[date]) records[date] = 0;
+    records[date] += tx.type === "deposit" ? Number(tx.amount || 0) : -Number(tx.amount || 0);
+  });
+
+  return `
+    <div class="financial-heatmap">
+      ${Array.from({ length: 35 })
+        .map((_, index) => {
+          const date = addDays(today(), index - 34);
+          const value = records[date] || 0;
+          const className = value > 0 ? "saving-day-good" : value < 0 ? "saving-day-bad" : "saving-day-empty";
+          const label = `${formatDate(date)} • ${value === 0 ? "0đ" : formatMoney(value)}`;
+
+          return `
+            <button
+              class="saving-day ${className}"
+              title="${escapeAttr(label)}"
+              aria-label="${escapeAttr(label)}"
+              type="button"
+            ></button>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderCategoryRadar(stats) {
+  const categories = Object.entries(stats.categoryTotals)
+    .map(([name, item]) => ({
+      name,
+      withdraw: item.withdraw || 0,
+      deposit: item.deposit || 0,
+      count: item.count || 0,
+    }))
+    .sort((a, b) => b.withdraw - a.withdraw)
+    .slice(0, 6);
+
+  const max = Math.max(1, ...categories.map((item) => item.withdraw));
+
+  if (!categories.length) {
+    return `<p class="muted">Chưa có dữ liệu category.</p>`;
+  }
+
+  return `
+    <div class="saving-radar">
+      ${categories
+        .map(
+          (item) => `
+            <div class="saving-radar-row">
+              <span>${escapeHTML(item.name)}</span>
+              <div class="saving-radar-bar">
+                <span style="width:${Math.max(6, Math.round((item.withdraw / max) * 100))}%"></span>
+              </div>
+              <strong>${formatMoney(item.withdraw)}</strong>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSavingTimelineChart() {
+  const active = getActiveSavingTransactions();
+  const values = Array.from({ length: 6 }).map((_, index) => {
+    const base = new Date(`${today()}T00:00:00`);
+    base.setMonth(base.getMonth() - (5 - index));
+    const key = base.toISOString().slice(0, 7);
+    const monthTx = active.filter((tx) => String(tx.date || "").startsWith(key));
+    const deposit = monthTx
+      .filter((tx) => tx.type === "deposit")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    const withdraw = monthTx
+      .filter((tx) => tx.type === "withdraw")
+      .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+    return { key, net: deposit - withdraw };
+  });
+
+  const maxAbs = Math.max(1, ...values.map((item) => Math.abs(item.net)));
+
+  return `
+    <div class="saving-timeline-chart">
+      ${values
+        .map(
+          (item) => `
+            <div class="saving-chart-col">
+              <div class="saving-chart-bar ${item.net >= 0 ? "positive" : "negative"}" style="height:${Math.max(8, Math.round((Math.abs(item.net) / maxAbs) * 100))}%"></div>
+              <span>${item.key.slice(5)}</span>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSavingVault(stats) {
+  const level = Math.max(1, Math.floor(stats.balance / 500000) + 1);
+  const nextLevelNeed = level * 500000;
+  const levelProgress = clamp(Math.round((stats.balance / nextLevelNeed) * 100), 0, 100);
+
+  return `
+    <div class="saving-vault ${stats.financialMood.className}">
+      <div>
+        <p class="eyebrow">SAVING VAULT</p>
+        <h3>💎 Vault LV${level}</h3>
+        <p class="muted">Còn ${formatMoney(Math.max(0, nextLevelNeed - stats.balance))} để lên cấp tiếp theo.</p>
+      </div>
+
+      <div class="vault-core">
+        <strong>${levelProgress}%</strong>
+        <span>LV${level}</span>
+      </div>
+
+      <div class="saving-progress vault-progress">
+        <span style="width:${levelProgress}%"></span>
+      </div>
+    </div>
+  `;
+}
+
+function renderSavingMission(stats) {
+  return `
+    <div class="saving-mission-card ${stats.missionDoneToday ? "done" : ""}">
+      <div>
+        <p class="eyebrow">DAILY FINANCIAL MISSION</p>
+        <h3>${stats.missionDoneToday ? "✅" : "🎮"} ${escapeHTML(stats.mission.title)}</h3>
+        <p class="muted">${escapeHTML(stats.mission.desc)} • ${escapeHTML(stats.mission.reward)}</p>
+      </div>
+
+      <button
+        class="${stats.missionDoneToday ? "ghost-btn" : "primary-btn"}"
+        data-action="complete-saving-mission"
+        ${stats.missionDoneToday ? "disabled" : ""}
+      >
+        ${stats.missionDoneToday ? "Đã hoàn thành" : "Hoàn thành mission"}
+      </button>
+    </div>
+  `;
+}
+
+function renderSavingAchievements(stats) {
+  return `
+    <div class="achievement-grid">
+      ${stats.achievements
+        .map(
+          (item) => `
+            <div class="achievement-card ${item.unlocked ? "unlocked" : "locked"}">
+              <strong>${item.icon}</strong>
+              <span>${escapeHTML(item.title)}</span>
+            </div>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSubscriptionTracker(stats) {
+  return `
+    <div class="list">
+      ${stats.subscriptions.length
+        ? stats.subscriptions
+            .slice(0, 4)
+            .map(
+              (sub) => `
+                <div class="mini-note">
+                  <div>
+                    <strong>${escapeHTML(sub.name)}</strong>
+                    <p class="muted">Ngày ${sub.dueDay} hằng tháng ${sub.note ? "• " + escapeHTML(sub.note) : ""}</p>
+                  </div>
+                  <strong>${formatMoney(sub.amount)}</strong>
+                </div>
+              `,
+            )
+            .join("")
+        : `<p class="muted">Chưa có subscription nào. Thêm Netflix, Spotify, hosting, domain...</p>`}
+    </div>
+  `;
+}
+
+function renderMonthReplay(stats) {
+  const message =
+    stats.monthNet >= 0
+      ? `Tháng này bạn đang dương ${formatMoney(stats.monthNet)}. Nhịp tiết kiệm khá ổn.`
+      : `Tháng này bạn đang âm ${formatMoney(Math.abs(stats.monthNet))}. Nên bật No-Spend Mode vài ngày.`;
+
+  return `
+    <div class="money-replay">
+      <p class="eyebrow">MONEY REPLAY</p>
+      <h3>🎬 Recap tháng ${stats.monthKey}</h3>
+      <p>${escapeHTML(message)}</p>
+      <div class="replay-grid">
+        <span>Top chi: <strong>${escapeHTML(stats.topSpendingCategory.name)}</strong></span>
+        <span>Forecast: <strong>${formatMoney(stats.monthProjectedNet)}</strong></span>
+        <span>90 ngày: <strong>${formatMoney(stats.simulation90Days)}</strong></span>
+      </div>
+    </div>
+  `;
 }
 
 function renderSaving() {
@@ -3901,42 +4355,47 @@ function renderSaving() {
   const filtered = getFilteredSavingTransactions();
 
   setContent(`
-    <div class="grid">
-      <div class="card hero small-hero">
-        <h2>💵 Tiết kiệm cá nhân</h2>
-        <p>Quỹ tiết kiệm riêng: thêm tiền, rút tiền, xem số dư, mục tiêu tháng và phân tích dòng tiền.</p>
+    <div class="grid financial-os ${saving.noSpendActive ? "no-spend-active" : ""}">
+      <div class="card hero small-hero financial-hero">
+        <p class="eyebrow">FINANCIAL OPERATING SYSTEM • ${escapeHTML(saving.financialMood.label)}</p>
+        <h2>${saving.financialMood.icon} Tiết kiệm cá nhân</h2>
+        <p>Quản lý quỹ tiết kiệm như một hệ điều hành tài chính: score, heatmap, mission, achievement, subscription, forecast và cảnh báo nguy hiểm.</p>
       </div>
 
       <div class="grid grid-4">
         ${statCard("💰 Số dư", formatMoney(saving.balance), "Tổng thêm - tổng rút", saving.balance < 0 ? "danger-text" : "success-text")}
-        ${statCard("📥 Tổng đã thêm", formatMoney(saving.totalDeposit), "Tất cả khoản thêm")}
-        ${statCard("📤 Tổng đã rút", formatMoney(saving.totalWithdraw), `Tỉ lệ rút: ${saving.withdrawRate}%`)}
-        ${statCard("🧠 Saving Score", `${saving.savingScore}/100`, "Sức khỏe quỹ")}
+        ${statCard("🧠 Saving Score", `${saving.savingScore}/100`, `${saving.financialMood.icon} ${saving.financialMood.label}`)}
+        ${statCard("🎯 Mục tiêu", `${saving.goalProgress}%`, `Cần ${formatMoney(saving.targetDailyNeed)}/ngày`)}
+        ${statCard("🔥 Burn-rate", saving.burnDaysLeft >= 999 ? "∞" : `${saving.burnDaysLeft} ngày`, `TB rút/ngày: ${formatMoney(saving.dailyAverageWithdraw)}`)}
       </div>
+
+      ${renderSavingVault(saving)}
+      ${renderSavingMission(saving)}
 
       <div class="grid grid-2">
         <div class="card">
           <div class="section-head">
             <div>
-              <h3>🎯 Mục tiêu tháng</h3>
-              <p class="muted">Theo dõi tiến độ tiết kiệm trong tháng hiện tại.</p>
+              <h3>🤖 Financial Advisor</h3>
+              <p class="muted">Phân tích tự động từ dòng tiền, mục tiêu và thói quen chi tiêu.</p>
             </div>
-            <span class="badge blue">${saving.goalProgress}%</span>
+            <span class="badge ${saving.financialMood.className === "danger" ? "red" : saving.financialMood.className === "warning" ? "yellow" : "green"}">
+              ${escapeHTML(saving.financialMood.label)}
+            </span>
           </div>
 
-          <div class="saving-progress">
-            <span style="width:${saving.goalProgress}%"></span>
-          </div>
+          ${renderAssistantCard(saving.advice)}
 
           <div class="list">
-            ${renderMiniMetric("Mục tiêu", formatMoney(saving.monthlyGoal || 0))}
-            ${renderMiniMetric("Net tháng này", formatMoney(saving.monthNet))}
-            ${renderMiniMetric("Đã thêm tháng này", formatMoney(saving.monthDeposit))}
-            ${renderMiniMetric("Đã rút tháng này", formatMoney(saving.monthWithdraw))}
+            ${renderMiniMetric("Net tháng này", formatMoney(saving.monthNet), `Dự phóng: ${formatMoney(saving.monthProjectedNet)}`)}
+            ${renderMiniMetric("Top spending", saving.topSpendingCategory.name, formatMoney(saving.topSpendingCategory.withdraw))}
+            ${renderMiniMetric("Subscription/tháng", formatMoney(saving.monthlySubscriptions), saving.nextSubscription ? `Gần nhất: ${saving.nextSubscription.name} còn ${saving.nextSubscription.left} ngày` : "Chưa có")}
           </div>
 
           <div class="tool-row">
-            <button class="primary-btn" data-action="set-saving-goal">Đặt mục tiêu tháng</button>
+            <button class="primary-btn" data-action="toggle-no-spend">
+              ${saving.noSpendActive ? "Tắt No-Spend" : "Bật No-Spend 3 ngày"}
+            </button>
             <button class="ghost-btn" data-action="set-saving-lock">Khóa quỹ</button>
           </div>
         </div>
@@ -3944,20 +4403,60 @@ function renderSaving() {
         <div class="card">
           <div class="section-head">
             <div>
-              <h3>🤖 Saving Assistant</h3>
-              <p class="muted">Phân tích tự động từ dòng tiền tiết kiệm.</p>
+              <h3>🔥 Financial Heatmap</h3>
+              <p class="muted">35 ngày gần nhất: xanh là dương, đỏ là rút tiền.</p>
             </div>
           </div>
-
-          ${renderAssistantCard(saving.advice)}
-
-          ${
-            saving.isLocked
-              ? `<p class="muted" style="margin-top:14px">🔒 Quỹ đang khóa đến ${formatDate(saving.lockUntil)}.</p>`
-              : `<p class="muted" style="margin-top:14px">🔓 Quỹ hiện không bị khóa.</p>`
-          }
+          ${renderFinancialHeatmap()}
         </div>
       </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>📊 Spending Categories</h3>
+              <p class="muted">Tự nhận diện category từ ghi chú giao dịch.</p>
+            </div>
+          </div>
+          ${renderCategoryRadar(saving)}
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>📈 6-Month Timeline</h3>
+              <p class="muted">Dòng tiền net theo tháng.</p>
+            </div>
+          </div>
+          ${renderSavingTimelineChart()}
+        </div>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>🏆 Achievement System</h3>
+              <p class="muted">${saving.unlockedAchievements}/${saving.achievements.length} thành tựu đã mở khóa.</p>
+            </div>
+          </div>
+          ${renderSavingAchievements(saving)}
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h3>💳 Subscription Tracker</h3>
+              <p class="muted">Theo dõi chi phí lặp lại như Spotify, domain, hosting...</p>
+            </div>
+            <button class="primary-btn" data-action="add-subscription">+ Sub</button>
+          </div>
+          ${renderSubscriptionTracker(saving)}
+        </div>
+      </div>
+
+      ${renderMonthReplay(saving)}
 
       <div class="card">
         <div class="section-head">
@@ -3971,6 +4470,7 @@ function renderSaving() {
           <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="10000">+10K</button>
           <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="20000">+20K</button>
           <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="50000">+50K</button>
+          <button class="primary-btn" data-action="quick-saving" data-type="deposit" data-amount="100000">+100K</button>
           <button class="ghost-btn" data-action="quick-saving" data-type="withdraw" data-amount="5000">-5K</button>
           <button class="ghost-btn" data-action="quick-saving" data-type="withdraw" data-amount="10000">-10K</button>
         </div>
@@ -3995,14 +4495,33 @@ function renderSaving() {
             </label>
           </div>
 
-          <label>
-            Ngày
-            <input id="savingDate" type="date" required />
-          </label>
+          <div class="grid grid-2">
+            <label>
+              Ngày
+              <input id="savingDate" type="date" required />
+            </label>
+
+            <label>
+              Category
+              <select id="savingCategory">
+                <option value="">Tự nhận diện</option>
+                <option value="Food">Food</option>
+                <option value="Bills">Bills</option>
+                <option value="Transport">Transport</option>
+                <option value="Learning">Learning</option>
+                <option value="Entertainment">Entertainment</option>
+                <option value="Tech">Tech</option>
+                <option value="Emergency">Emergency</option>
+                <option value="Saving">Saving</option>
+                <option value="Income">Income</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+          </div>
 
           <label>
             Ghi chú
-            <textarea id="savingNote" placeholder="VD: bỏ ống heo, mua nước, tiền dư..."></textarea>
+            <textarea id="savingNote" placeholder="VD: ăn lẩu 220k, bỏ ống heo, Spotify, domain..."></textarea>
           </label>
 
           <div class="modal-actions">
@@ -4046,9 +4565,10 @@ function getFilteredSavingTransactions() {
   const filter = store.data.personalSaving?.filter || "all";
   const allTransactions = store.data.personalSaving?.transactions || [];
 
-  let list = filter === "deleted"
-    ? allTransactions.filter((tx) => tx.deleted)
-    : allTransactions.filter((tx) => !tx.deleted);
+  let list =
+    filter === "deleted"
+      ? allTransactions.filter((tx) => tx.deleted)
+      : allTransactions.filter((tx) => !tx.deleted);
 
   if (filter === "deposit") list = list.filter((tx) => tx.type === "deposit");
   if (filter === "withdraw") list = list.filter((tx) => tx.type === "withdraw");
@@ -4061,6 +4581,8 @@ function getFilteredSavingTransactions() {
 
 function renderSavingTransaction(tx) {
   const isDeposit = tx.type === "deposit";
+  const category = tx.category || inferSavingCategory(tx.note, tx.type);
+  const mood = tx.mood || inferSavingMood(tx.note, tx.type, tx.amount);
 
   return `
     <div class="item saving-transaction ${tx.deleted ? "saving-deleted" : ""}">
@@ -4072,6 +4594,8 @@ function renderSavingTransaction(tx) {
         <p class="muted">
           ${isDeposit ? "📥 Thêm tiền" : "📤 Rút tiền"}
           • ${formatDate(tx.date)}
+          • ${escapeHTML(category)}
+          • mood: ${escapeHTML(mood)}
           ${tx.note ? " • " + escapeHTML(tx.note) : ""}
           ${tx.editedAt ? " • Đã sửa" : ""}
           ${tx.deleted ? " • Đã xóa mềm" : ""}
@@ -4101,6 +4625,7 @@ function initSavingForm() {
   const amountInput = $("savingAmount");
   const dateInput = $("savingDate");
   const noteInput = $("savingNote");
+  const categoryInput = $("savingCategory");
 
   if (!form || !typeInput || !amountInput || !dateInput || !noteInput) return;
 
@@ -4114,6 +4639,7 @@ function initSavingForm() {
       amount: Number(amountInput.value || 0),
       date: dateInput.value,
       note: noteInput.value.trim(),
+      category: categoryInput?.value || "",
     });
 
     form.reset();
@@ -4132,7 +4658,7 @@ function getSavingBalance() {
     }, 0);
 }
 
-function addSavingTransaction({ type, amount, date = today(), note = "" }) {
+function addSavingTransaction({ type, amount, date = today(), note = "", category = "" }) {
   if (!amount || amount <= 0) {
     showToast("Số tiền không hợp lệ");
     return;
@@ -4144,7 +4670,16 @@ function addSavingTransaction({ type, amount, date = today(), note = "" }) {
     const saving = getPersonalSavingStats();
 
     if (saving.isLocked) {
-      const ok = confirm(`Quỹ đang khóa đến ${formatDate(saving.lockUntil)}. Bạn vẫn muốn rút?`);
+      const ok = confirm(
+        `Quỹ đang khóa đến ${formatDate(saving.lockUntil)}. Bạn vẫn muốn rút?`,
+      );
+      if (!ok) return;
+    }
+
+    if (saving.noSpendActive) {
+      const ok = confirm(
+        "🥷 No-Spend Mode đang bật. Khoản rút này có thể phá mission hôm nay. Vẫn rút?",
+      );
       if (!ok) return;
     }
 
@@ -4157,11 +4692,15 @@ function addSavingTransaction({ type, amount, date = today(), note = "" }) {
     if (!ok) return;
   }
 
+  const finalCategory = category || inferSavingCategory(note, type);
+
   const tx = normalizeSavingTransaction({
     type,
     amount,
     date,
     note,
+    category: finalCategory,
+    mood: inferSavingMood(note, type, amount),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -4172,8 +4711,9 @@ function addSavingTransaction({ type, amount, date = today(), note = "" }) {
     },
     {
       activity: {
-        action: type === "deposit" ? "Thêm tiền tiết kiệm" : "Rút tiền tiết kiệm",
-        detail: `${formatMoney(amount)} • ${note || formatDate(date)}`,
+        action:
+          type === "deposit" ? "Thêm tiền tiết kiệm" : "Rút tiền tiết kiệm",
+        detail: `${formatMoney(amount)} • ${finalCategory} • ${note || formatDate(date)}`,
       },
       toast: type === "deposit" ? "Đã thêm tiền ✅" : "Đã rút tiền ✅",
     },
@@ -4190,13 +4730,16 @@ function quickSaving(type, amount) {
 }
 
 function editSavingTransaction(id) {
-  const tx = store.data.personalSaving.transactions.find((item) => item.id === id);
+  const tx = store.data.personalSaving.transactions.find(
+    (item) => item.id === id,
+  );
   if (!tx || tx.deleted) return;
 
   const nextAmount = Number(prompt("Số tiền mới:", tx.amount));
   if (!nextAmount || nextAmount <= 0) return;
 
   const nextNote = prompt("Ghi chú mới:", tx.note || "") ?? tx.note;
+  const nextCategory = prompt("Category:", tx.category || inferSavingCategory(tx.note, tx.type)) || tx.category;
 
   if (tx.type === "withdraw") {
     const balanceWithoutThis = getSavingBalance() + Number(tx.amount || 0);
@@ -4209,17 +4752,20 @@ function editSavingTransaction(id) {
 
   commit(
     (data) => {
-      data.personalSaving.transactions = data.personalSaving.transactions.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              originalAmount: item.originalAmount ?? item.amount,
-              amount: nextAmount,
-              note: nextNote.trim(),
-              editedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          : item,
+      data.personalSaving.transactions = data.personalSaving.transactions.map(
+        (item) =>
+          item.id === id
+            ? {
+                ...item,
+                originalAmount: item.originalAmount ?? item.amount,
+                amount: nextAmount,
+                note: nextNote.trim(),
+                category: nextCategory,
+                mood: inferSavingMood(nextNote, item.type, nextAmount),
+                editedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
       );
     },
     {
@@ -4233,7 +4779,9 @@ function editSavingTransaction(id) {
 }
 
 function softDeleteSavingTransaction(id) {
-  const tx = store.data.personalSaving.transactions.find((item) => item.id === id);
+  const tx = store.data.personalSaving.transactions.find(
+    (item) => item.id === id,
+  );
   if (!tx) return;
 
   const ok = confirm("Xóa mềm giao dịch này? Có thể khôi phục sau.");
@@ -4241,14 +4789,15 @@ function softDeleteSavingTransaction(id) {
 
   commit(
     (data) => {
-      data.personalSaving.transactions = data.personalSaving.transactions.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              deleted: true,
-              updatedAt: new Date().toISOString(),
-            }
-          : item,
+      data.personalSaving.transactions = data.personalSaving.transactions.map(
+        (item) =>
+          item.id === id
+            ? {
+                ...item,
+                deleted: true,
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
       );
     },
     {
@@ -4264,14 +4813,15 @@ function softDeleteSavingTransaction(id) {
 function restoreSavingTransaction(id) {
   commit(
     (data) => {
-      data.personalSaving.transactions = data.personalSaving.transactions.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              deleted: false,
-              updatedAt: new Date().toISOString(),
-            }
-          : item,
+      data.personalSaving.transactions = data.personalSaving.transactions.map(
+        (item) =>
+          item.id === id
+            ? {
+                ...item,
+                deleted: false,
+                updatedAt: new Date().toISOString(),
+              }
+            : item,
       );
     },
     {
@@ -4290,9 +4840,8 @@ function hardDeleteSavingTransaction(id) {
 
   commit(
     (data) => {
-      data.personalSaving.transactions = data.personalSaving.transactions.filter(
-        (item) => item.id !== id,
-      );
+      data.personalSaving.transactions =
+        data.personalSaving.transactions.filter((item) => item.id !== id);
     },
     {
       activity: {
@@ -4352,6 +4901,94 @@ function setSavingLock() {
     },
   );
 }
+
+function toggleNoSpendMode() {
+  const saving = store.data.personalSaving || {};
+  const active = Boolean(
+    saving.noSpendUntil &&
+      new Date(`${saving.noSpendUntil}T23:59:59`).getTime() >= Date.now(),
+  );
+
+  commit(
+    (data) => {
+      if (active) {
+        data.personalSaving.noSpendUntil = "";
+        data.personalSaving.noSpendReason = "";
+      } else {
+        data.personalSaving.noSpendUntil = addDays(today(), 2);
+        data.personalSaving.noSpendReason = "No-Spend Mode 3 ngày";
+      }
+    },
+    {
+      activity: {
+        action: active ? "Tắt No-Spend Mode" : "Bật No-Spend Mode",
+        detail: active ? "OFF" : "3 ngày",
+      },
+      toast: active ? "Đã tắt No-Spend Mode" : "Đã bật No-Spend Mode 🥷",
+    },
+  );
+}
+
+function completeSavingMission() {
+  const mission = getCurrentDailyMission();
+
+  commit(
+    (data) => {
+      if (!data.personalSaving.missionLog) data.personalSaving.missionLog = {};
+      if (!data.personalSaving.missionLog[today()]) data.personalSaving.missionLog[today()] = {};
+
+      data.personalSaving.missionLog[today()][mission.id] = {
+        done: true,
+        at: new Date().toISOString(),
+      };
+    },
+    {
+      activity: {
+        action: "Hoàn thành financial mission",
+        detail: mission.title,
+      },
+      toast: "Mission hoàn thành ⚡",
+    },
+  );
+}
+
+function addSubscription() {
+  const name = prompt("Tên subscription? VD: Spotify, Netflix, Domain");
+  if (!name) return;
+
+  const amount = Number(prompt("Số tiền mỗi tháng?", "59000"));
+  if (!amount || amount <= 0) return;
+
+  const dueDay = Number(prompt("Ngày thanh toán hằng tháng? 1-31", "1")) || 1;
+  const note = prompt("Ghi chú:", "") || "";
+
+  commit(
+    (data) => {
+      if (!Array.isArray(data.personalSaving.subscriptions)) {
+        data.personalSaving.subscriptions = [];
+      }
+
+      data.personalSaving.subscriptions.unshift({
+        id: uid(),
+        name: name.trim(),
+        amount,
+        dueDay: clamp(dueDay, 1, 31),
+        note,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    },
+    {
+      activity: {
+        action: "Thêm subscription",
+        detail: `${name} • ${formatMoney(amount)}`,
+      },
+      toast: "Đã thêm subscription 💳",
+    },
+  );
+}
+
 
 /* =========================================================
    BACKUP / IMPORT / NOTIFICATIONS
@@ -4563,7 +5200,8 @@ function handleDocumentClick(event) {
     "delete-kh1-todo": () => deleteKh1Todo(id),
 
     // Personal Saving actions
-    "quick-saving": () => quickSaving(target.dataset.type, target.dataset.amount),
+    "quick-saving": () =>
+      quickSaving(target.dataset.type, target.dataset.amount),
     "edit-saving-tx": () => editSavingTransaction(id),
     "soft-delete-saving-tx": () => softDeleteSavingTransaction(id),
     "restore-saving-tx": () => restoreSavingTransaction(id),
@@ -4571,6 +5209,9 @@ function handleDocumentClick(event) {
     "filter-saving": () => filterSavingTransactions(target.dataset.filter),
     "set-saving-goal": () => setSavingGoal(),
     "set-saving-lock": () => setSavingLock(),
+    "toggle-no-spend": () => toggleNoSpendMode(),
+    "complete-saving-mission": () => completeSavingMission(),
+    "add-subscription": () => addSubscription(),
 
     "clear-search": () => {
       runtime.searchQuery = "";
@@ -4901,11 +5542,7 @@ function autoTopupKh2(amount) {
 
       let filled = 0;
 
-      for (
-        let i = 0;
-        i < CONFIG.heatmapDays && filled < daysToFill;
-        i += 1
-      ) {
+      for (let i = 0; i < CONFIG.heatmapDays && filled < daysToFill; i += 1) {
         const date = addDays(today(), -i);
 
         const current = data.kh2Daily[date] || {};
@@ -4936,9 +5573,7 @@ function autoTopupKh2(amount) {
 
       toast:
         `Đã bù ${filledDates.length} ngày` +
-        (leftover
-          ? ` • dư ${formatMoney(leftover)}`
-          : "") +
+        (leftover ? ` • dư ${formatMoney(leftover)}` : "") +
         ` ✅`,
     },
   );
@@ -4949,6 +5584,5 @@ function autoTopupKh2(amount) {
     dates: filledDates,
   };
 }
-
 
 initApp();
