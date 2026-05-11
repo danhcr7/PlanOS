@@ -224,19 +224,19 @@
               type="search"
               placeholder="Tìm KH, ghi chú, deadline..."
             />
-            <button class="action-btn compact-btn" id="langBtn">VI</button>
-            <button class="action-btn compact-btn" id="notifyBtn">🔔</button>
-            <button class="action-btn compact-btn" id="themeBtn">🌙</button>
-            <button class="action-btn primary-btn" id="addPlanBtn">
+            <button class="action-btn compact-btn" id="langBtn" type="button" aria-label="Đổi ngôn ngữ">VI</button>
+            <button class="action-btn compact-btn" id="notifyBtn" type="button" aria-label="Bật thông báo">🔔</button>
+            <button class="action-btn compact-btn" id="themeBtn" type="button" aria-label="Đổi giao diện sáng/tối">🌙</button>
+            <button class="action-btn primary-btn" id="addPlanBtn" type="button">
               + Thêm
             </button>
-            <button class="action-btn cloud-btn" id="cloudSaveBtn">
+            <button class="action-btn cloud-btn" id="cloudSaveBtn" type="button">
               ☁ Save
             </button>
-            <button class="action-btn cloud-btn" id="cloudLoadBtn">
+            <button class="action-btn cloud-btn" id="cloudLoadBtn" type="button">
               🔄 Load
             </button>
-            <button class="action-btn logout-btn" id="logoutBtn">
+            <button class="action-btn logout-btn" id="logoutBtn" type="button">
               🚪 Logout
             </button>
           </div>
@@ -347,8 +347,8 @@
         <span>🎵 PlanOS Player</span>
 
         <div class="music-player-actions">
-          <button id="musicMinBtn">—</button>
-          <button id="musicCloseBtn">✕</button>
+          <button id="musicMinBtn" type="button" aria-label="Thu nhỏ player">—</button>
+          <button id="musicCloseBtn" type="button" aria-label="Đóng player">✕</button>
         </div>
       </div>
 
@@ -357,6 +357,8 @@
         title="PlanOS Music Player"
         allow="autoplay; encrypted-media"
         allowfullscreen
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
       ></iframe>
 
       <div class="music-resize-handle" id="musicResizeHandle"></div>

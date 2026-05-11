@@ -34,6 +34,8 @@ const CONFIG = Object.freeze({
     lang: "planosLang",
     syncMeta: "planosSyncMeta",
     music: "planosMusic",
+    player: "planosPlayerState",
+    notificationLog: "planosNotificationLog",
   },
 });
 
@@ -57,7 +59,12 @@ const DEFAULT_DATA = Object.freeze({
   personalSaving: {
     monthlyGoal: 0,
     lockUntil: "",
+    noSpendUntil: "",
+    noSpendReason: "",
     filter: "all",
+    subscriptions: [],
+    missionLog: {},
+    achievements: {},
     transactions: [],
   },
   activityLog: [],
@@ -474,9 +481,14 @@ const runtime = {
   musicSelected: null,
   musicIsPlaying: false,
   musicSearchTimer: null,
+  musicSearchController: null,
   playerDragging: false,
   playerOffsetX: 0,
   playerOffsetY: 0,
+  playerDragFrame: null,
+  playerLastX: 0,
+  playerLastY: 0,
+  lastDueNotificationDate: "",
 };
 
 const store = {
@@ -556,6 +568,7 @@ async function searchMusic(query) {
   const q = query.trim();
 
   if (!q) {
+    runtime.musicResults = [];
     clearMusicSuggestions();
     return;
   }
@@ -564,7 +577,7 @@ async function searchMusic(query) {
     !CONFIG.youtubeApiKey ||
     CONFIG.youtubeApiKey === "DAN_API_KEY_YOUTUBE_CUA_BAN_VAO_DAY"
   ) {
-    renderMusicSuggestions([
+    const demoItems = [
       {
         videoId: "jfKfPfyJRdk",
         title: "lofi hip hop radio - beats to relax/study to",
@@ -577,31 +590,45 @@ async function searchMusic(query) {
         channel: "Lofi Girl",
         thumb: "https://i.ytimg.com/vi/5qap5aO4i9A/hqdefault.jpg",
       },
-    ]);
+    ];
 
+    runtime.musicResults = demoItems;
+    renderMusicSuggestions(demoItems);
     showToast("Chưa có YouTube API key, đang dùng dữ liệu demo.");
     return;
   }
+
+  runtime.musicSearchController?.abort();
+  runtime.musicSearchController = new AbortController();
 
   try {
     const params = new URLSearchParams({
       part: "snippet",
       type: "video",
-      maxResults: "6",
-      q,
+      maxResults: "10",
+      q: `${q} official audio OR official music video`,
       videoCategoryId: "10",
       key: CONFIG.youtubeApiKey,
     });
 
     const response = await fetch(
       `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
+      { signal: runtime.musicSearchController.signal },
     );
 
+    const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      throw new Error("YouTube search failed");
+      const message =
+        data?.error?.message ||
+        `YouTube search failed (${response.status})`;
+
+      throw new Error(message);
     }
 
-    const data = await response.json();
+    if (runtime.musicQuery.trim() && runtime.musicQuery.trim() !== q) {
+      return;
+    }
 
     const items = (data.items || [])
       .filter((item) => item.id?.videoId)
@@ -617,9 +644,19 @@ async function searchMusic(query) {
 
     runtime.musicResults = items;
     renderMusicSuggestions(items);
+
+    if (!items.length) {
+      showToast("Không thấy bài phù hợp 😭");
+    }
   } catch (error) {
+    if (error.name === "AbortError") return;
+
     console.error("Music search error:", error);
-    showToast("Không tìm được nhạc 😭");
+    showToast(
+      error.message?.includes("referer")
+        ? "API key bị chặn domain hiện tại."
+        : "Không tìm được nhạc 😭",
+    );
   }
 }
 
@@ -691,16 +728,72 @@ function stopMusic() {
   }
 }
 
+function restorePlayerState(player) {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CONFIG.storage.player));
+
+    if (!saved || !player) return;
+
+    if (saved.left) player.style.left = saved.left;
+    if (saved.top) player.style.top = saved.top;
+    if (saved.width) player.style.width = saved.width;
+    if (saved.height) player.style.height = saved.height;
+
+    if (saved.left || saved.top) {
+      player.style.right = "auto";
+      player.style.bottom = "auto";
+    }
+  } catch (error) {
+    console.warn("PlanOS player state parse error:", error);
+  }
+}
+
+function savePlayerState(player) {
+  if (!player) return;
+
+  localStorage.setItem(
+    CONFIG.storage.player,
+    JSON.stringify({
+      left: player.style.left,
+      top: player.style.top,
+      width: player.style.width || `${player.offsetWidth}px`,
+      height: player.style.height || `${player.offsetHeight}px`,
+    }),
+  );
+}
+
+function clampPlayerToViewport(player) {
+  if (!player) return;
+
+  const rect = player.getBoundingClientRect();
+  const safeGap = 12;
+
+  const left = clamp(rect.left, safeGap, window.innerWidth - rect.width - safeGap);
+  const top = clamp(rect.top, safeGap, window.innerHeight - rect.height - safeGap);
+
+  player.style.left = `${left}px`;
+  player.style.top = `${top}px`;
+  player.style.right = "auto";
+  player.style.bottom = "auto";
+}
+
 function initMusicWidget() {
   loadSavedMusic();
+
+  const player = document.querySelector(".music-player-shell");
+  const playerHeader = document.getElementById("musicPlayerHeader");
+
+  restorePlayerState(player);
+
   document
     .getElementById("musicCloseBtn")
     ?.addEventListener("click", stopMusic);
-  document.getElementById("musicMinBtn")?.addEventListener("click", () => {
-    const player = document.querySelector(".music-player-shell");
 
-    player.classList.toggle("minimized");
+  document.getElementById("musicMinBtn")?.addEventListener("click", () => {
+    player?.classList.toggle("minimized");
+    savePlayerState(player);
   });
+
   dom.musicSearchInput?.addEventListener("input", (event) => {
     const query = event.target.value;
 
@@ -711,7 +804,27 @@ function initMusicWidget() {
 
     runtime.musicSearchTimer = setTimeout(() => {
       searchMusic(query);
-    }, 420);
+    }, 360);
+  });
+
+  dom.musicSearchInput?.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    const query = dom.musicSearchInput.value.trim();
+
+    if (!query) {
+      showToast("Nhập tên bài hát trước nha.");
+      return;
+    }
+
+    await searchMusic(query);
+
+    if (runtime.musicResults.length) {
+      selectMusic(runtime.musicResults[0]);
+      playSelectedMusic();
+    }
   });
 
   dom.musicSearchInput?.addEventListener("focus", () => {
@@ -740,32 +853,77 @@ function initMusicWidget() {
       clearMusicSuggestions();
     }
   });
-  const player = document.querySelector(".music-player-shell");
-  const playerHeader = document.getElementById("musicPlayerHeader");
 
-  playerHeader?.addEventListener("mousedown", (event) => {
+  playerHeader?.addEventListener("pointerdown", (event) => {
+    if (!player) return;
+
     runtime.playerDragging = true;
 
     const rect = player.getBoundingClientRect();
 
     runtime.playerOffsetX = event.clientX - rect.left;
     runtime.playerOffsetY = event.clientY - rect.top;
+    runtime.playerLastX = event.clientX;
+    runtime.playerLastY = event.clientY;
 
     player.style.right = "auto";
     player.style.bottom = "auto";
+    playerHeader.setPointerCapture?.(event.pointerId);
   });
 
-  document.addEventListener("mousemove", (event) => {
+  document.addEventListener("pointermove", (event) => {
+    if (!runtime.playerDragging || !player) return;
+
+    runtime.playerLastX = event.clientX;
+    runtime.playerLastY = event.clientY;
+
+    if (runtime.playerDragFrame) return;
+
+    runtime.playerDragFrame = requestAnimationFrame(() => {
+      const rect = player.getBoundingClientRect();
+      const safeGap = 10;
+
+      const left = clamp(
+        runtime.playerLastX - runtime.playerOffsetX,
+        safeGap,
+        window.innerWidth - rect.width - safeGap,
+      );
+
+      const top = clamp(
+        runtime.playerLastY - runtime.playerOffsetY,
+        safeGap,
+        window.innerHeight - rect.height - safeGap,
+      );
+
+      player.style.left = `${left}px`;
+      player.style.top = `${top}px`;
+      player.style.right = "auto";
+      player.style.bottom = "auto";
+      runtime.playerDragFrame = null;
+    });
+  });
+
+  document.addEventListener("pointerup", () => {
     if (!runtime.playerDragging) return;
 
-    player.style.left = `${event.clientX - runtime.playerOffsetX}px`;
-
-    player.style.top = `${event.clientY - runtime.playerOffsetY}px`;
-  });
-
-  document.addEventListener("mouseup", () => {
     runtime.playerDragging = false;
+
+    if (runtime.playerDragFrame) {
+      cancelAnimationFrame(runtime.playerDragFrame);
+      runtime.playerDragFrame = null;
+    }
+
+    clampPlayerToViewport(player);
+    savePlayerState(player);
   });
+
+  window.addEventListener(
+    "resize",
+    debounce(() => {
+      clampPlayerToViewport(player);
+      savePlayerState(player);
+    }, 180),
+  );
 }
 /* =========================================================
    CORE UTILITIES
@@ -849,16 +1007,34 @@ function formatMoney(amount) {
   return `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
 }
 
+function toLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function toLocalMonthKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
 function today() {
-  const d = new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 10);
+  return toLocalDateKey(new Date());
 }
 
 function addDays(dateString, amount) {
-  const d = new Date(`${dateString}T00:00:00`);
+  const [year, month, day] = String(dateString || today())
+    .split("-")
+    .map(Number);
+
+  const d = new Date(year, month - 1, day);
   d.setDate(d.getDate() + amount);
-  return d.toISOString().slice(0, 10);
+
+  return toLocalDateKey(d);
 }
 
 function formatDate(dateString) {
@@ -951,16 +1127,23 @@ function setContent(html) {
 
 function normalizeItem(item = {}) {
   const now = new Date().toISOString();
+  const date = item.date || "";
+  const time = item.time || "";
+  const datetime = item.datetime || (date && time ? `${date}T${time}` : "");
 
   return {
     id: item.id || uid(),
     name: String(item.name || item.title || "").trim(),
-    date: item.date || "",
-    time: item.time || "",
-    datetime: item.datetime || "",
+    date,
+    time,
+    datetime,
     status: item.status || STATUS.todo,
     note: item.note || "",
+    email: item.email || "",
     paid: Boolean(item.paid),
+    emailAlertSent: Boolean(item.emailAlertSent),
+    browserAlertSent: Boolean(item.browserAlertSent),
+    browserAlertSentAt: item.browserAlertSentAt || "",
     createdAt: item.createdAt || item.updatedAt || now,
     updatedAt: item.updatedAt || item.createdAt || now,
   };
@@ -4216,7 +4399,7 @@ function renderSavingTimelineChart() {
   const values = Array.from({ length: 6 }).map((_, index) => {
     const base = new Date(`${today()}T00:00:00`);
     base.setMonth(base.getMonth() - (5 - index));
-    const key = base.toISOString().slice(0, 7);
+    const key = toLocalMonthKey(base);
     const monthTx = active.filter((tx) => String(tx.date || "").startsWith(key));
     const deposit = monthTx
       .filter((tx) => tx.type === "deposit")
@@ -4999,7 +5182,7 @@ function exportData() {
     ...store.data,
     exportedAt: new Date().toISOString(),
     app: "PlanOS",
-    schemaVersion: 2,
+    schemaVersion: 4,
   };
 
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -5051,36 +5234,54 @@ async function handleImport(event) {
 }
 
 async function requestNotifications() {
-  if (!("Notification" in window)) return;
+  if (!("Notification" in window)) {
+    showToast("Trình duyệt không hỗ trợ thông báo.");
+    return;
+  }
+
   const permission = await Notification.requestPermission();
-  if (permission === "granted") showToast(t("notificationEnabled"));
+
+  if (permission === "granted") {
+    showToast(t("notificationEnabled"));
+    notifyDueItems();
+  } else {
+    showToast("Thông báo chưa được cấp quyền.");
+  }
 }
 
 function notifyDueItems() {
   if (!("Notification" in window) || Notification.permission !== "granted")
     return;
 
+  const log = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(CONFIG.storage.notificationLog)) || {};
+    } catch {
+      return {};
+    }
+  })();
+
+  if (log.dashboard === today()) return;
+
   const due = getDueItems(1);
   const kh2Passed = Boolean(store.data.kh2Daily?.[today()]?.saved);
 
-  let body =
-    runtime.currentLang === "vi"
-      ? "Không có deadline gấp hôm nay."
-      : "No urgent deadlines today.";
+  if (!due.length && kh2Passed) return;
 
-  if (due.length) {
-    body =
-      runtime.currentLang === "vi"
-        ? `Bạn có ${due.length} mục cần chú ý.`
-        : `You have ${due.length} urgent items.`;
-  } else if (!kh2Passed) {
-    body =
-      runtime.currentLang === "vi"
-        ? "KH2 hôm nay chưa PASS."
-        : "KH2 has not passed today.";
-  }
+  const body = due.length
+    ? runtime.currentLang === "vi"
+      ? `Bạn có ${due.length} mục cần chú ý.`
+      : `You have ${due.length} urgent items.`
+    : runtime.currentLang === "vi"
+      ? "KH2 hôm nay chưa PASS."
+      : "KH2 has not passed today.";
 
   new Notification("PlanOS", { body });
+
+  localStorage.setItem(
+    CONFIG.storage.notificationLog,
+    JSON.stringify({ ...log, dashboard: today() }),
+  );
 }
 function checkKh1BrowserReminders() {
   if (!("Notification" in window)) return;
@@ -5146,6 +5347,7 @@ function loadPage(pageName) {
   if (!pageInfo[pageName]) pageName = "dashboard";
 
   runtime.currentPage = pageName;
+  document.body.dataset.page = pageName;
   if (dom.pageTitle) dom.pageTitle.textContent = t(pageName);
 
   dom.navItems.forEach((item) => {
@@ -5153,6 +5355,11 @@ function loadPage(pageName) {
   });
 
   if (runtime.searchQuery.trim()) {
+    if (dom.pageTitle) {
+      dom.pageTitle.textContent =
+        runtime.currentLang === "vi" ? "Tìm kiếm" : "Search";
+    }
+
     renderGlobalSearchResults();
     applyLanguage();
     return;
@@ -5231,7 +5438,9 @@ function handleDocumentClick(event) {
     },
   };
 
-  actions[action]?.();
+  if (actions[action]) {
+    actions[action]();
+  }
 }
 
 function bindEvents() {
@@ -5376,6 +5585,7 @@ async function initApp() {
   bindEvents();
   initClickEffects();
   applyThemeFromStorage();
+  document.body.dataset.page = runtime.currentPage;
   initMusicWidget();
   const isLoggedIn = checkLogin();
 

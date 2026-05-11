@@ -1,52 +1,109 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
 
-const SUPABASE_URL =
-  "https://gmuabqlzqutfqtwzvgif.supabase.co";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/11.8.0/firebase-firestore.js";
 
-const SUPABASE_ANON_KEY =
-  "sb_publishable_1P6mAGDCEBaCiSba3iJyKg_Us48xGEj";
+/* =========================================================
+   PlanOS Firebase Data Adapter
+   - Single-document cloud storage
+   - Legacy-data compatible
+   - Returns metadata for sync conflict checks
+========================================================= */
 
-const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+const firebaseConfig = {
+  apiKey: "AIzaSyCj9mV2IFn4vSGPSdZrNQr77HwFITiz-8U",
+  authDomain: "personal-dashboard-f979a.firebaseapp.com",
+  projectId: "personal-dashboard-f979a",
+  storageBucket: "personal-dashboard-f979a.firebasestorage.app",
+  messagingSenderId: "923960821414",
+  appId: "1:923960821414:web:02dd315c3f335a13021667",
+  measurementId: "G-R6HY5YL8R2",
+};
 
-const TABLE_NAME = "planos_data";
+const app = initializeApp(firebaseConfig);
 
+export const db = getFirestore(app);
+
+const COLLECTION_NAME = "dashboard";
 const DOC_ID = "main";
 
+function getMainDocRef() {
+  return doc(db, COLLECTION_NAME, DOC_ID);
+}
+
+function normalizeCloudSnapshot(payload) {
+  if (!payload) return null;
+
+  // New format: { data, updatedAt, savedAt, ... }
+  if (payload.data && typeof payload.data === "object") {
+    return {
+      data: payload.data,
+      updatedAt:
+        payload.updatedAt ||
+        payload.savedAt ||
+        payload.updated_at ||
+        payload.data.savedAt ||
+        "",
+      savedAt: payload.savedAt || payload.data.savedAt || "",
+      version: payload.version || payload.data.version || 0,
+    };
+  }
+
+  // Legacy format: the app data was written directly to the document.
+  return {
+    data: payload,
+    updatedAt: payload.savedAt || payload.updatedAt || "",
+    savedAt: payload.savedAt || "",
+    version: payload.version || 0,
+  };
+}
+
 export async function saveDataToCloud(data) {
+  const savedAt = new Date().toISOString();
 
   const payload = {
     id: DOC_ID,
     data,
-    updated_at:
-      new Date().toISOString(),
+    savedAt,
+    updatedAt: savedAt,
+    updatedAtServer: serverTimestamp(),
+    version: Date.now(),
+    app: "PlanOS",
+    schemaVersion: 3,
   };
 
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .upsert(payload);
-
-  if (error) {
-    console.error(error);
+  try {
+    await setDoc(getMainDocRef(), payload, { merge: true });
+  } catch (error) {
+    console.error("PlanOS Firebase save failed:", error);
     throw error;
   }
+
+  return {
+    updatedAt: savedAt,
+    savedAt,
+    version: payload.version,
+  };
 }
 
 export async function loadDataFromCloud() {
+  let snapshot;
 
-  const { data, error } =
-    await supabase
-      .from(TABLE_NAME)
-      .select("data")
-      .eq("id", DOC_ID)
-      .maybeSingle();
-
-  if (error) {
-    console.error(error);
+  try {
+    snapshot = await getDoc(getMainDocRef());
+  } catch (error) {
+    console.error("PlanOS Firebase load failed:", error);
     throw error;
   }
 
-  return data?.data || null;
+  if (!snapshot.exists()) {
+    return null;
+  }
+
+  return normalizeCloudSnapshot(snapshot.data());
 }
