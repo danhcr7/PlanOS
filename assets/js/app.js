@@ -785,14 +785,37 @@ function initMusicWidget() {
 
   restorePlayerState(player);
 
-  document
-    .getElementById("musicCloseBtn")
-    ?.addEventListener("click", stopMusic);
+  const musicCloseBtn = document.getElementById("musicCloseBtn");
+const musicMinBtn = document.getElementById("musicMinBtn");
+const musicPlayerActions = document.querySelector(".music-player-actions");
 
-  document.getElementById("musicMinBtn")?.addEventListener("click", () => {
-    player?.classList.toggle("minimized");
-    savePlayerState(player);
-  });
+musicPlayerActions?.addEventListener("pointerdown", (event) => {
+  event.stopPropagation();
+});
+
+musicPlayerActions?.addEventListener("mousedown", (event) => {
+  event.stopPropagation();
+});
+
+musicPlayerActions?.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+musicCloseBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  stopMusic();
+});
+
+musicMinBtn?.addEventListener("click", (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const player = document.querySelector(".music-player-shell");
+
+  player?.classList.toggle("minimized");
+});
 
   dom.musicSearchInput?.addEventListener("input", (event) => {
     const query = event.target.value;
@@ -855,6 +878,9 @@ function initMusicWidget() {
   });
 
   playerHeader?.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".music-player-actions")) {
+  return;
+}
     if (!player) return;
 
     runtime.playerDragging = true;

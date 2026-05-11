@@ -4848,3 +4848,28 @@ body[data-page="settings"] .tool-row .ghost-btn:hover {
   }
 }
 
+.music-player-header {
+  position: relative;
+  z-index: 20;
+}
+
+.music-player-actions {
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.music-player-actions button {
+  position: relative;
+  z-index: 40;
+  pointer-events: auto;
+}
+
+.music-player-shell iframe {
+  position: relative;
+  z-index: 1;
+}
+
+.music-player-shell.minimized iframe {
+  pointer-events: none;
+}
