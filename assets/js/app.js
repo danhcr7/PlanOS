@@ -1,7 +1,7 @@
 import { saveDataToCloud, loadDataFromCloud } from "./firebase.js";
 
 /* =========================================================
-   PlanOS — app.js 2026 Optimized
+   PlanOS — app.js 2026 Performance Edition
    Vanilla JS SPA-style architecture
 
    Goals:
@@ -464,6 +464,8 @@ const runtime = {
   searchTimer: null,
   toastTimer: null,
   clockTimer: null,
+  localSaveTimer: null,
+  localSaveQueued: false,
   isCloudSaving: false,
   pendingCloudSave: false,
   lastSaveAt: 0,
@@ -1236,8 +1238,12 @@ function setButtonBusy(button, isBusy, labelWhenBusy) {
 
 function showToast(message) {
   if (!dom.toast) return;
+
   dom.toast.textContent = message;
+  dom.toast.setAttribute("role", "status");
+  dom.toast.setAttribute("aria-live", "polite");
   dom.toast.classList.add("show");
+
   clearTimeout(runtime.toastTimer);
   runtime.toastTimer = setTimeout(
     () => dom.toast.classList.remove("show"),
@@ -1255,7 +1261,11 @@ function setContent(html) {
 
   runtime.lastContentHTML = html;
   dom.content.setAttribute("aria-busy", "true");
+
+  // Keep the simple string renderer, but avoid doing any work when the
+  // generated markup is unchanged. This is the main DOM-churn guard for pages.
   dom.content.innerHTML = html;
+
   nextFrame(() => dom.content?.removeAttribute("aria-busy"));
 }
 
@@ -1413,14 +1423,23 @@ function loadLocal() {
 }
 
 function saveLocal() {
-  scheduleIdle(() => {
-    try {
-      localStorage.setItem(CONFIG.storage.data, JSON.stringify(store.data));
-    } catch (error) {
-      console.error("PlanOS local save failed:", error);
-      showToast("Không lưu được local storage 😭");
-    }
-  });
+  runtime.localSaveQueued = true;
+  clearTimeout(runtime.localSaveTimer);
+
+  runtime.localSaveTimer = setTimeout(() => {
+    if (!runtime.localSaveQueued) return;
+
+    runtime.localSaveQueued = false;
+
+    scheduleIdle(() => {
+      try {
+        localStorage.setItem(CONFIG.storage.data, JSON.stringify(store.data));
+      } catch (error) {
+        console.error("PlanOS local save failed:", error);
+        showToast("Không lưu được local storage 😭");
+      }
+    });
+  }, 120);
 }
 
 function invalidateAnalytics() {
@@ -1885,16 +1904,31 @@ function getAnalytics() {
   }
 
   const all = getAllItems();
-  const done = all.filter((i) => i.status === STATUS.done).length;
-  const important = all.filter((i) => i.status === STATUS.important).length;
-  const overdue = all.filter(
-    (i) => i.status !== STATUS.done && i.date && daysBetween(i.date) < 0,
-  ).length;
-  const dueSoon = all
-    .filter((item) => item.status !== STATUS.done && item.date)
-    .map((item) => ({ ...item, daysLeft: daysBetween(item.date) }))
-    .filter((item) => item.daysLeft !== null && item.daysLeft <= 3)
-    .sort((a, b) => a.daysLeft - b.daysLeft);
+  const dueSoon = [];
+  let done = 0;
+  let important = 0;
+  let overdue = 0;
+
+  for (const item of all) {
+    if (item.status === STATUS.done) {
+      done += 1;
+      continue;
+    }
+
+    if (item.status === STATUS.important) important += 1;
+
+    if (!item.date) continue;
+
+    const daysLeft = daysBetween(item.date);
+    if (daysLeft === null) continue;
+
+    if (daysLeft < 0) overdue += 1;
+    if (daysLeft <= 3) {
+      dueSoon.push({ ...item, daysLeft });
+    }
+  }
+
+  dueSoon.sort((a, b) => a.daysLeft - b.daysLeft);
 
   const kh2 = getKh2Stats();
   const weekly = getWeeklyStats(all);
@@ -1949,15 +1983,19 @@ function focusScore(item) {
 
 function getKh2Stats() {
   const records = Object.values(store.data.kh2Daily || {});
-  const passDays = records.filter((d) => d.saved).length;
-  const totalSaved = records.reduce(
-    (sum, d) => sum + (d.saved ? Number(d.deposit || CONFIG.dailySaving) : 0),
-    0,
-  );
-  const totalWithdraw = records.reduce(
-    (sum, d) => sum + Number(d.withdraw || 0),
-    0,
-  );
+  let passDays = 0;
+  let totalSaved = 0;
+  let totalWithdraw = 0;
+
+  for (const record of records) {
+    if (record.saved) {
+      passDays += 1;
+      totalSaved += Number(record.deposit || CONFIG.dailySaving);
+    }
+
+    totalWithdraw += Number(record.withdraw || 0);
+  }
+
   const streaks = getKh2Streaks();
   const passRate60 = getKh2PassRate(CONFIG.heatmapDays);
 
@@ -5817,8 +5855,18 @@ async function initApp() {
   setInterval(checkKh1BrowserReminders, 60 * 1000);
 
   runtime.backgroundSyncTimer = setInterval(() => {
-    syncFromCloudIfNewer();
+    if (!document.hidden) syncFromCloudIfNewer();
   }, 20 * 1000);
+
+  window.addEventListener("pagehide", () => {
+    if (runtime.localSaveQueued) {
+      try {
+        localStorage.setItem(CONFIG.storage.data, JSON.stringify(store.data));
+      } catch (error) {
+        console.warn("PlanOS pagehide save failed:", error);
+      }
+    }
+  });
 
   checkKh1BrowserReminders();
 

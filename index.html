@@ -9,11 +9,16 @@
     />
     <title>PlanOS</title>
     <meta name="theme-color" content="#030712" />
+    <meta name="application-name" content="PlanOS" />
+    <meta name="apple-mobile-web-app-title" content="PlanOS" />
     <meta name="color-scheme" content="dark light" />
     <link rel="icon" href="data:," />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://www.googleapis.com" />
+    <link rel="preconnect" href="https://www.youtube.com" />
+    <link rel="dns-prefetch" href="https://i.ytimg.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&display=swap"
       rel="stylesheet"
@@ -23,12 +28,13 @@
   </head>
 
   <body>
+    <a class="skip-link" href="#content">Bỏ qua tới nội dung chính</a>
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
     <div class="noise-layer"></div>
 
-    <div class="login-screen" id="loginScreen">
+    <div class="login-screen" id="loginScreen" aria-label="PlanOS login">
       <div class="login-shell">
         <div class="login-brand-panel">
           <div class="brand-chip">PRIVATE OS</div>
@@ -98,7 +104,7 @@
       </div>
     </div>
 
-    <div class="loading-screen" id="loadingScreen">
+    <div class="loading-screen" id="loadingScreen" aria-live="polite" aria-label="Đang mở PlanOS">
       <div class="loading-wrap">
         <div class="loading-ring">
           <div class="loading-logo-text">✦</div>
@@ -210,7 +216,7 @@
         </div>
       </aside>
 
-      <main class="main">
+      <main class="main" id="mainContent">
         <header class="topbar">
           <div class="topbar-title">
             <p class="eyebrow">WELCOME BACK</p>
@@ -258,7 +264,7 @@
               class="music-search-input"
               type="search"
               placeholder="Nhập tên bài hát bạn thích..."
-              autocomplete="off"
+              autocomplete="off" spellcheck="false"
             />
 
             <button class="music-play-btn" id="musicPlayBtn" type="button">
@@ -269,11 +275,11 @@
           </div>
         </div>
 
-        <section id="content" class="content"></section>
+        <section id="content" class="content" tabindex="-1" aria-live="polite"></section>
       </main>
     </div>
 
-    <div class="modal" id="planModal">
+    <div class="modal" id="planModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-box">
         <div class="modal-header">
           <div>
@@ -340,7 +346,7 @@
     </div>
 
     <input id="importFileInput" type="file" accept="application/json" hidden />
-    <div id="toast" class="toast">Done</div>
+    <div id="toast" class="toast" role="status" aria-live="polite">Done</div>
 
     <div class="music-player-shell">
       <div class="music-player-header" id="musicPlayerHeader">

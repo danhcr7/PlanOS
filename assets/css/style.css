@@ -4553,3 +4553,207 @@ body.light .card {
   }
 }
 
+
+
+/* =========================================================
+   15. VISUAL POLISH / PERFORMANCE PASS
+   Extra layer added without changing the HTML or JS contract.
+========================================================= */
+
+:root {
+  --glass-highlight: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 30px 120px rgba(2, 6, 23, 0.46);
+  --ring-soft: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(139, 92, 246, 0.38), transparent 31%),
+    radial-gradient(circle at 90% 10%, rgba(34, 211, 238, 0.27), transparent 29%),
+    radial-gradient(circle at 72% 86%, rgba(20, 241, 201, 0.16), transparent 34%),
+    linear-gradient(135deg, var(--bg), var(--bg-2));
+}
+
+body::-webkit-scrollbar,
+.top-actions::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body::-webkit-scrollbar-track,
+.top-actions::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb,
+.top-actions::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2)) border-box;
+}
+
+.skip-link {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 1000000;
+  padding: 10px 14px;
+  border-radius: var(--radius-pill);
+  color: white;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-140%);
+  transition: transform var(--transition);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.card,
+.hero,
+.music-panel,
+.modal-box,
+.login-card,
+.login-brand-panel,
+.kanban-col {
+  box-shadow: var(--glass-shadow), var(--ring-soft);
+}
+
+.card,
+.item,
+.mini-note,
+.timeline-item,
+.kanban-card,
+.stat-row,
+.assistant-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 120px;
+}
+
+.card:hover,
+.hero:hover,
+.music-panel:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 34px 120px rgba(2, 6, 23, 0.52), 0 0 42px rgba(34, 211, 238, 0.1);
+}
+
+.card::after,
+.music-panel::after,
+.modal-box::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--glass-highlight), transparent 28%, transparent 68%, rgba(34, 211, 238, 0.08));
+  opacity: 0.36;
+}
+
+.hero h2,
+#pageTitle,
+.login-brand-panel h2 {
+  text-wrap: balance;
+}
+
+.card p,
+.hero p,
+.muted,
+.assistant-content p {
+  text-wrap: pretty;
+}
+
+.music-panel {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(139, 92, 246, 0.18), transparent 36%),
+    radial-gradient(circle at 90% 18%, rgba(34, 211, 238, 0.18), transparent 34%),
+    var(--surface);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.music-panel.playing {
+  border-color: rgba(34, 211, 238, 0.36);
+  box-shadow: 0 28px 100px rgba(34, 211, 238, 0.16), var(--ring-soft);
+}
+
+.music-search-input {
+  background-color: rgba(255, 255, 255, 0.075);
+}
+
+.music-suggestions {
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: var(--shadow-soft), var(--ring-soft);
+}
+
+.music-player-shell {
+  box-shadow: 0 34px 130px rgba(2, 6, 23, 0.58), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  will-change: transform, width, height;
+}
+
+.menu-item,
+.action-btn,
+.primary-btn,
+.ghost-btn,
+.icon-btn,
+.mini-btn,
+.item,
+.kanban-card,
+.assistant-card {
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body {
+    overflow-x: hidden;
+  }
+
+  .app {
+    min-width: 0;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .music-panel {
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 16px;
+  }
+
+  .topbar {
+    margin: -16px -16px 20px;
+    padding: 18px 16px;
+  }
+
+  .card,
+  .hero,
+  .modal-box {
+    border-radius: 24px;
+  }
+}
