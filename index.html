@@ -1,6 +1,12 @@
 <!doctype html>
 <html lang="vi">
   <head>
+    <!-- =========================================================
+         PlanOS Document Head
+         - App metadata
+         - Font/network hints
+         - Core stylesheet and module preload
+    ========================================================== -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
@@ -28,12 +34,14 @@
   </head>
 
   <body>
+    <!-- Accessibility shortcut -->
     <a class="skip-link" href="#content">Bỏ qua tới nội dung chính</a>
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
     <div class="noise-layer"></div>
 
+    <!-- Authentication shell -->
     <div class="login-screen" id="loginScreen" aria-label="PlanOS login">
       <div class="login-shell">
         <div class="login-brand-panel">
@@ -104,7 +112,13 @@
       </div>
     </div>
 
-    <div class="loading-screen" id="loadingScreen" aria-live="polite" aria-label="Đang mở PlanOS">
+    <!-- Boot/loading shell -->
+    <div
+      class="loading-screen"
+      id="loadingScreen"
+      aria-live="polite"
+      aria-label="Đang mở PlanOS"
+    >
       <div class="loading-wrap">
         <div class="loading-ring">
           <div class="loading-logo-text">✦</div>
@@ -124,6 +138,7 @@
       </div>
     </div>
 
+    <!-- Main application shell -->
     <div class="app hide" id="app">
       <aside class="sidebar">
         <div class="sidebar-top">
@@ -230,16 +245,49 @@
               type="search"
               placeholder="Tìm KH, ghi chú, deadline..."
             />
-            <button class="action-btn compact-btn" id="langBtn" type="button" aria-label="Đổi ngôn ngữ">VI</button>
-            <button class="action-btn compact-btn" id="notifyBtn" type="button" aria-label="Bật thông báo">🔔</button>
-            <button class="action-btn compact-btn" id="themeBtn" type="button" aria-label="Đổi giao diện sáng/tối">🌙</button>
-            <button class="action-btn primary-btn" id="addPlanBtn" type="button">
+            <button
+              class="action-btn compact-btn"
+              id="langBtn"
+              type="button"
+              aria-label="Đổi ngôn ngữ"
+            >
+              VI
+            </button>
+            <button
+              class="action-btn compact-btn"
+              id="notifyBtn"
+              type="button"
+              aria-label="Bật thông báo"
+            >
+              🔔
+            </button>
+            <button
+              class="action-btn compact-btn"
+              id="themeBtn"
+              type="button"
+              aria-label="Đổi giao diện sáng/tối"
+            >
+              🌙
+            </button>
+            <button
+              class="action-btn primary-btn"
+              id="addPlanBtn"
+              type="button"
+            >
               + Thêm
             </button>
-            <button class="action-btn cloud-btn" id="cloudSaveBtn" type="button">
+            <button
+              class="action-btn cloud-btn"
+              id="cloudSaveBtn"
+              type="button"
+            >
               ☁ Save
             </button>
-            <button class="action-btn cloud-btn" id="cloudLoadBtn" type="button">
+            <button
+              class="action-btn cloud-btn"
+              id="cloudLoadBtn"
+              type="button"
+            >
               🔄 Load
             </button>
             <button class="action-btn logout-btn" id="logoutBtn" type="button">
@@ -264,7 +312,8 @@
               class="music-search-input"
               type="search"
               placeholder="Nhập tên bài hát bạn thích..."
-              autocomplete="off" spellcheck="false"
+              autocomplete="off"
+              spellcheck="false"
             />
 
             <button class="music-play-btn" id="musicPlayBtn" type="button">
@@ -275,11 +324,23 @@
           </div>
         </div>
 
-        <section id="content" class="content" tabindex="-1" aria-live="polite"></section>
+        <section
+          id="content"
+          class="content"
+          tabindex="-1"
+          aria-live="polite"
+        ></section>
       </main>
     </div>
 
-    <div class="modal" id="planModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <!-- Global plan modal -->
+    <div
+      class="modal"
+      id="planModal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalTitle"
+    >
       <div class="modal-box">
         <div class="modal-header">
           <div>
@@ -345,6 +406,7 @@
       </div>
     </div>
 
+    <!-- Utility portals: import, toast, floating music player -->
     <input id="importFileInput" type="file" accept="application/json" hidden />
     <div id="toast" class="toast" role="status" aria-live="polite">Done</div>
 
@@ -353,8 +415,12 @@
         <span>🎵 PlanOS Player</span>
 
         <div class="music-player-actions">
-          <button id="musicMinBtn" type="button" aria-label="Thu nhỏ player">—</button>
-          <button id="musicCloseBtn" type="button" aria-label="Đóng player">✕</button>
+          <button id="musicMinBtn" type="button" aria-label="Thu nhỏ player">
+            —
+          </button>
+          <button id="musicCloseBtn" type="button" aria-label="Đóng player">
+            ✕
+          </button>
         </div>
       </div>
 
@@ -370,6 +436,7 @@
       <div class="music-resize-handle" id="musicResizeHandle"></div>
     </div>
 
+    <!-- Main application bootstrap -->
     <script type="module" src="./assets/js/app.js"></script>
   </body>
 </html>

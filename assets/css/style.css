@@ -1,4 +1,14 @@
 /* =========================================================
+   PlanOS — style.css optimized structure map
+
+   Organization notes
+   - Token-first CSS architecture.
+   - Sections move from base system -> app shell -> content components ->
+     modules -> utilities/responsive/animation.
+   - Kept as one stylesheet for static deployment compatibility.
+========================================================= */
+
+/* =========================================================
    PlanOS — style.css 2026 Optimized
    Modern SaaS / Personal OS visual system
    Compatible with current index.html + app.js
@@ -4091,7 +4101,7 @@ body {
 }
 
 .bg-orb {
-  opacity: .24;
+  opacity: 0.24;
   filter: blur(72px);
   will-change: transform, opacity;
 }
@@ -4107,9 +4117,21 @@ body::after {
 body {
   overscroll-behavior: none;
   background:
-    radial-gradient(circle at 10% 6%, rgba(139,92,246,.24), transparent 32%),
-    radial-gradient(circle at 92% 14%, rgba(34,211,238,.19), transparent 30%),
-    radial-gradient(circle at 58% 92%, rgba(20,241,201,.11), transparent 36%),
+    radial-gradient(
+      circle at 10% 6%,
+      rgba(139, 92, 246, 0.24),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 92% 14%,
+      rgba(34, 211, 238, 0.19),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 58% 92%,
+      rgba(20, 241, 201, 0.11),
+      transparent 36%
+    ),
     linear-gradient(135deg, #020617 0%, #07111f 48%, #030712 100%);
 }
 
@@ -4120,55 +4142,75 @@ body {
 .topbar,
 .modal-box {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur))
+    saturate(var(--glass-saturate));
 }
 
 .card {
   background:
-    radial-gradient(circle at top right, rgba(34,211,238,.075), transparent 34%),
-    linear-gradient(135deg, rgba(255,255,255,.09), rgba(255,255,255,.038));
-  border-color: rgba(255,255,255,.12);
+    radial-gradient(
+      circle at top right,
+      rgba(34, 211, 238, 0.075),
+      transparent 34%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.09),
+      rgba(255, 255, 255, 0.038)
+    );
+  border-color: rgba(255, 255, 255, 0.12);
   box-shadow:
-    0 22px 72px rgba(0,0,0,.32),
-    inset 0 1px 0 rgba(255,255,255,.075);
+    0 22px 72px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.075);
 }
 
 .card::before,
 .hero::before,
 .music-panel::before {
-  background:
-    radial-gradient(circle at top left, rgba(255,255,255,.07), transparent 42%) !important;
-  opacity: .42 !important;
+  background: radial-gradient(
+    circle at top left,
+    rgba(255, 255, 255, 0.07),
+    transparent 42%
+  ) !important;
+  opacity: 0.42 !important;
 }
 
 .hero {
-  border-color: rgba(255,255,255,.18);
+  border-color: rgba(255, 255, 255, 0.18);
   background:
-    radial-gradient(circle at 18% 20%, rgba(255,255,255,.20), transparent 27%),
-    radial-gradient(circle at 82% 12%, rgba(34,211,238,.28), transparent 29%),
-    linear-gradient(135deg, rgba(139,92,246,.58), rgba(34,211,238,.19));
+    radial-gradient(
+      circle at 18% 20%,
+      rgba(255, 255, 255, 0.2),
+      transparent 27%
+    ),
+    radial-gradient(
+      circle at 82% 12%,
+      rgba(34, 211, 238, 0.28),
+      transparent 29%
+    ),
+    linear-gradient(135deg, rgba(139, 92, 246, 0.58), rgba(34, 211, 238, 0.19));
 }
 
 .hero h2 {
-  text-shadow: 0 12px 44px rgba(0,0,0,.28);
+  text-shadow: 0 12px 44px rgba(0, 0, 0, 0.28);
 }
 
 .topbar {
-  border-bottom-color: rgba(255,255,255,.065);
+  border-bottom-color: rgba(255, 255, 255, 0.065);
 }
 
 .top-actions {
-  border: 1px solid rgba(255,255,255,.085);
+  border: 1px solid rgba(255, 255, 255, 0.085);
   border-radius: 26px;
-  background: rgba(255,255,255,.045);
+  background: rgba(255, 255, 255, 0.045);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.06),
-    0 18px 60px rgba(0,0,0,.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 18px 60px rgba(0, 0, 0, 0.18);
 }
 
 .search-input,
 .music-search-input {
-  background-color: rgba(255,255,255,.075);
+  background-color: rgba(255, 255, 255, 0.075);
 }
 
 /* ---------- C. MOTION: FAST, CONSISTENT, LESS JANK ---------- */
@@ -4197,11 +4239,11 @@ body {
 }
 
 .card:hover {
-  border-color: rgba(255,255,255,.19);
+  border-color: rgba(255, 255, 255, 0.19);
   box-shadow:
-    0 30px 88px rgba(0,0,0,.38),
-    0 0 30px rgba(34,211,238,.07),
-    inset 0 1px 0 rgba(255,255,255,.09);
+    0 30px 88px rgba(0, 0, 0, 0.38),
+    0 0 30px rgba(34, 211, 238, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
 }
 
 .action-btn:hover,
@@ -4244,19 +4286,23 @@ body {
 
   padding: 10px;
   border-radius: 24px;
-  border: 1px solid rgba(255,255,255,.16);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 
   background:
-    radial-gradient(circle at top right, rgba(34,211,238,.13), transparent 36%),
-    rgba(15,23,42,.98);
+    radial-gradient(
+      circle at top right,
+      rgba(34, 211, 238, 0.13),
+      transparent 36%
+    ),
+    rgba(15, 23, 42, 0.98);
 
   backdrop-filter: blur(18px) saturate(138%);
   -webkit-backdrop-filter: blur(18px) saturate(138%);
 
   box-shadow:
-    0 32px 100px rgba(0,0,0,.55),
-    0 0 38px rgba(34,211,238,.14),
-    inset 0 1px 0 rgba(255,255,255,.08);
+    0 32px 100px rgba(0, 0, 0, 0.55),
+    0 0 38px rgba(34, 211, 238, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .music-suggestions.show {
@@ -4272,7 +4318,7 @@ body {
 }
 
 .music-suggestion-item:hover {
-  border-color: rgba(255,255,255,.10);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .music-player-shell {
@@ -4360,9 +4406,9 @@ body[data-page="settings"] .tool-row .ghost-btn,
   border: 0;
   color: white;
   background:
-    linear-gradient(135deg, rgba(255,255,255,.18), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 34%),
     linear-gradient(135deg, var(--primary), var(--primary-2));
-  box-shadow: 0 16px 46px rgba(34,211,238,.18);
+  box-shadow: 0 16px 46px rgba(34, 211, 238, 0.18);
 }
 
 /* ---------- F. FINANCIAL OS + LONG TEXT ---------- */
@@ -4399,7 +4445,7 @@ body[data-page="dashboard"] .content > .grid {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(34,211,238,.55) rgba(255,255,255,.06);
+  scrollbar-color: rgba(34, 211, 238, 0.55) rgba(255, 255, 255, 0.06);
 }
 
 ::-webkit-scrollbar {
@@ -4408,35 +4454,49 @@ body[data-page="dashboard"] .content > .grid {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255,255,255,.04);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 ::-webkit-scrollbar-thumb {
-  border: 2px solid rgba(3,7,18,.82);
+  border: 2px solid rgba(3, 7, 18, 0.82);
   border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(139,92,246,.78), rgba(34,211,238,.74));
+  background: linear-gradient(
+    180deg,
+    rgba(139, 92, 246, 0.78),
+    rgba(34, 211, 238, 0.74)
+  );
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background:
-    linear-gradient(180deg, rgba(139,92,246,.95), rgba(34,211,238,.92));
+  background: linear-gradient(
+    180deg,
+    rgba(139, 92, 246, 0.95),
+    rgba(34, 211, 238, 0.92)
+  );
 }
 
 /* ---------- H. LIGHT MODE POLISH ---------- */
 
 body.light .top-actions {
-  background: rgba(255,255,255,.68);
+  background: rgba(255, 255, 255, 0.68);
 }
 
 body.light .card {
-  border-color: rgba(15,23,42,.09);
+  border-color: rgba(15, 23, 42, 0.09);
   background:
-    radial-gradient(circle at top right, rgba(34,211,238,.10), transparent 36%),
-    linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,250,252,.78));
+    radial-gradient(
+      circle at top right,
+      rgba(34, 211, 238, 0.1),
+      transparent 36%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.92),
+      rgba(248, 250, 252, 0.78)
+    );
   box-shadow:
-    0 20px 62px rgba(15,23,42,.10),
-    inset 0 1px 0 rgba(255,255,255,.86);
+    0 20px 62px rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
 }
 
 /* ---------- I. RESPONSIVE ---------- */
@@ -4470,7 +4530,7 @@ body.light .card {
   }
 
   .bg-orb {
-    opacity: .14;
+    opacity: 0.14;
     filter: blur(58px);
   }
 
@@ -4553,8 +4613,6 @@ body.light .card {
   }
 }
 
-
-
 /* =========================================================
    15. VISUAL POLISH / PERFORMANCE PASS
    Extra layer added without changing the HTML or JS contract.
@@ -4563,14 +4621,27 @@ body.light .card {
 :root {
   --glass-highlight: rgba(255, 255, 255, 0.18);
   --glass-shadow: 0 30px 120px rgba(2, 6, 23, 0.46);
-  --ring-soft: 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --ring-soft:
+    0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 body {
   background:
-    radial-gradient(circle at 12% 8%, rgba(139, 92, 246, 0.38), transparent 31%),
-    radial-gradient(circle at 90% 10%, rgba(34, 211, 238, 0.27), transparent 29%),
-    radial-gradient(circle at 72% 86%, rgba(20, 241, 201, 0.16), transparent 34%),
+    radial-gradient(
+      circle at 12% 8%,
+      rgba(139, 92, 246, 0.38),
+      transparent 31%
+    ),
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(34, 211, 238, 0.27),
+      transparent 29%
+    ),
+    radial-gradient(
+      circle at 72% 86%,
+      rgba(20, 241, 201, 0.16),
+      transparent 34%
+    ),
     linear-gradient(135deg, var(--bg), var(--bg-2));
 }
 
@@ -4592,7 +4663,8 @@ body::-webkit-scrollbar-thumb,
 .sidebar::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: var(--radius-pill);
-  background: linear-gradient(135deg, var(--primary), var(--primary-2)) border-box;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2))
+    border-box;
 }
 
 .skip-link {
@@ -4638,7 +4710,9 @@ body::-webkit-scrollbar-thumb,
 .hero:hover,
 .music-panel:hover {
   border-color: rgba(255, 255, 255, 0.24);
-  box-shadow: 0 34px 120px rgba(2, 6, 23, 0.52), 0 0 42px rgba(34, 211, 238, 0.1);
+  box-shadow:
+    0 34px 120px rgba(2, 6, 23, 0.52),
+    0 0 42px rgba(34, 211, 238, 0.1);
 }
 
 .card::after,
@@ -4649,7 +4723,13 @@ body::-webkit-scrollbar-thumb,
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--glass-highlight), transparent 28%, transparent 68%, rgba(34, 211, 238, 0.08));
+  background: linear-gradient(
+    135deg,
+    var(--glass-highlight),
+    transparent 28%,
+    transparent 68%,
+    rgba(34, 211, 238, 0.08)
+  );
   opacity: 0.36;
 }
 
@@ -4673,8 +4753,16 @@ body::-webkit-scrollbar-thumb,
   border: 1px solid var(--line);
   border-radius: 30px;
   background:
-    radial-gradient(circle at 12% 10%, rgba(139, 92, 246, 0.18), transparent 36%),
-    radial-gradient(circle at 90% 18%, rgba(34, 211, 238, 0.18), transparent 34%),
+    radial-gradient(
+      circle at 12% 10%,
+      rgba(139, 92, 246, 0.18),
+      transparent 36%
+    ),
+    radial-gradient(
+      circle at 90% 18%,
+      rgba(34, 211, 238, 0.18),
+      transparent 34%
+    ),
     var(--surface);
   backdrop-filter: blur(18px) saturate(150%);
   -webkit-backdrop-filter: blur(18px) saturate(150%);
@@ -4682,7 +4770,9 @@ body::-webkit-scrollbar-thumb,
 
 .music-panel.playing {
   border-color: rgba(34, 211, 238, 0.36);
-  box-shadow: 0 28px 100px rgba(34, 211, 238, 0.16), var(--ring-soft);
+  box-shadow:
+    0 28px 100px rgba(34, 211, 238, 0.16),
+    var(--ring-soft);
 }
 
 .music-search-input {
@@ -4696,7 +4786,9 @@ body::-webkit-scrollbar-thumb,
 }
 
 .music-player-shell {
-  box-shadow: 0 34px 130px rgba(2, 6, 23, 0.58), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 34px 130px rgba(2, 6, 23, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
   will-change: transform, width, height;
 }
 

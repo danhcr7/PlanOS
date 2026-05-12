@@ -1,3 +1,17 @@
+/* =========================================================
+   PlanOS — app.js optimized structure map
+
+   Organization notes
+   - This file is kept as one deployable module for compatibility.
+   - Sections are grouped from stable constants -> runtime state -> services ->
+     data normalization -> analytics -> rendering -> events -> bootstrap.
+   - No external filename/import path has been changed.
+
+   Suggested future physical split
+   /core/config.js, /core/store.js, /core/analytics.js
+   /services/cloud.js, /services/music.js, /ui/render.js, /ui/events.js
+========================================================= */
+
 import { saveDataToCloud, loadDataFromCloud } from "./firebase.js";
 
 /* =========================================================
